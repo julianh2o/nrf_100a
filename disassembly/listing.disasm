@@ -1,0 +1,3137 @@
+Disassembly Listing for pic18f25k80
+Generated From:
+/Users/julian/Documents/Programming/tinkering/pic18f25k80.X/dist/default/production/pic18f25k80.X.production.cof
+Sep 10, 2013 12:43:00 AM
+
+---  /Users/julian/Documents/Programming/tinkering/pic18f25k80.X/serlcd.c  ------------------------------
+1:             #include <p18F25K80.h>
+2:             #include "serlcd.h"
+3:             
+4:             char charactersSinceFill = 0;
+5:             
+6:             void setupLCD(void) {
+7:                 TRISCbits.TRISC6 = 1;
+07C8  8C94     BSF TRISC, 6, ACCESS
+8:                 RCSTA1bits.SPEN = 1;
+07CA  8EAB     BSF RCSTA1, 7, ACCESS
+9:                 TXSTA1bits.TXEN = 1;
+07CC  8AAC     BSF TXSTA1, 5, ACCESS
+10:            
+11:                TXSTA1bits.SYNC = LCD_SYNC;
+07CE  98AC     BCF TXSTA1, 4, ACCESS
+12:                BAUDCON1bits.BRG16 = LCD_BRG16;
+07D0  96A7     BCF BAUDCON1, 3, ACCESS
+13:                TXSTA1bits.BRGH = LCD_BRGH;
+07D2  94AC     BCF TXSTA1, 2, ACCESS
+14:                
+15:                SPBRG1 = LCD_SPBRG;
+07D4  0E67     MOVLW 0x67
+07D6  6EAF     MOVWF SPBRG1, ACCESS
+16:            }
+07D8  0012     RETURN 0
+17:            
+18:            void sendSpecialCommand(unsigned char byte) {
+07DA  D97B     RCALL __pa_1
+19:                sendByte(0x7C); //control character
+07DC  0E7C     MOVLW 0x7C
+07DE  D1A9     BRA __pa_9
+0B32  6EE6     MOVWF POSTINC1, ACCESS
+0B34  DE7F     RCALL sendByte
+0B36  52E5     MOVF POSTDEC1, F, ACCESS
+20:                sendByte(byte);
+0B38  DFD6     RCALL __pa_3
+0B3A  DE7C     RCALL sendByte
+0B3C  D7C8     BRA __pa_0
+21:            }
+22:            
+23:            void sendCommand(unsigned char byte) {
+07E0  D978     RCALL __pa_1
+24:                sendByte(0xFE); //control character
+07E2  0EFE     MOVLW 0xFE
+07E4  D1A6     BRA __pa_9
+25:                sendByte(byte);
+26:            }
+27:            
+28:            void setPosition(unsigned char row, unsigned char column) {
+07E6  D975     RCALL __pa_1
+29:                charactersSinceFill = row*16+column;
+07E8  0EFD     MOVLW 0xFD
+07EA  CFDB     MOVFF PLUSW2, POSTINC1
+07EC  FFE6     NOP
+07EE  0EFE     MOVLW 0xFE
+07F0  50DB     MOVF PLUSW2, W, ACCESS
+07F2  0D10     MULLW 0x10
+07F4  50F3     MOVF PRODL, W, ACCESS
+07F6  52E5     MOVF POSTDEC1, F, ACCESS
+07F8  24E7     ADDWF INDF1, W, ACCESS
+07FA  010E     MOVLB 0xE
+07FC  6F12     MOVWF 0x12, BANKED
+30:                sendCommand(0x80 + 64*row + column);
+07FE  0EFD     MOVLW 0xFD
+0800  CFDB     MOVFF PLUSW2, POSTINC1
+0802  FFE6     NOP
+0804  0EFE     MOVLW 0xFE
+0806  50DB     MOVF PLUSW2, W, ACCESS
+0808  0D40     MULLW 0x40
+080A  50F3     MOVF PRODL, W, ACCESS
+080C  0F80     ADDLW 0x80
+080E  52E5     MOVF POSTDEC1, F, ACCESS
+0810  24E7     ADDWF INDF1, W, ACCESS
+0812  6EE6     MOVWF POSTINC1, ACCESS
+0814  DFE5     RCALL sendCommand
+0816  D15B     BRA __pa_0
+31:            }
+32:            
+33:            void setBacklight(unsigned char brightness) {
+0818  D95C     RCALL __pa_1
+34:                sendSpecialCommand(128+brightness);
+081A  0EFE     MOVLW 0xFE
+081C  CFDB     MOVFF PLUSW2, __tmp_0
+081E  F014     NOP
+0820  0E80     MOVLW 0x80
+0822  2414     ADDWF __tmp_0, W, ACCESS
+0824  6EE6     MOVWF POSTINC1, ACCESS
+0826  DFD9     RCALL sendSpecialCommand
+0828  D152     BRA __pa_0
+35:            }
+36:            
+37:            void clear() {
+38:                sendCommand(0x01);
+082A  0E01     MOVLW 0x1
+082C  6EE6     MOVWF POSTINC1, ACCESS
+082E  DFD8     RCALL sendCommand
+0830  52E5     MOVF POSTDEC1, F, ACCESS
+39:            }
+0832  0012     RETURN 0
+40:            
+41:            void sendByte(unsigned char byte) {
+0834  CFD9     MOVFF FSR2L, POSTINC1
+0836  FFE6     NOP
+0838  CFE1     MOVFF FSR1L, FSR2L
+083A  FFD9     NOP
+42:                TXREG1 = byte;
+083C  0EFE     MOVLW 0xFE
+083E  50DB     MOVF PLUSW2, W, ACCESS
+0840  6EAD     MOVWF TXREG1, ACCESS
+43:                while(!TXSTA1bits.TRMT) Nop();
+0842  B2AC     BTFSC TXSTA1, 1, ACCESS
+0844  D002     BRA 0x84A
+0846  0000     NOP
+0848  D7FC     BRA 0x842
+44:            }
+084A  52E5     MOVF POSTDEC1, F, ACCESS
+084C  CFE7     MOVFF INDF1, FSR2L
+084E  FFD9     NOP
+0850  0012     RETURN 0
+45:            
+46:            void sendVisibleByte(unsigned char byte) {
+0852  D93F     RCALL __pa_1
+47:                charactersSinceFill++;
+0854  010E     MOVLB 0xE
+0856  2B12     INCF 0x12, F, BANKED
+48:                sendByte(byte);
+0858  D946     RCALL __pa_3
+085A  DFEC     RCALL sendByte
+085C  D138     BRA __pa_0
+0AE6  0EFE     MOVLW 0xFE
+0AE8  CFDB     MOVFF PLUSW2, POSTINC1
+0AEA  FFE6     NOP
+0AEC  0012     RETURN 0
+49:            }
+50:            
+51:            void sendLiteralBytes(rom const char * bytes) {
+085E  D939     RCALL __pa_1
+52:                while(*bytes) {
+0860  0EFD     MOVLW 0xFD
+0862  CFDB     MOVFF PLUSW2, TBLPTRL
+0864  FFF6     NOP
+0866  0EFE     MOVLW 0xFE
+0868  CFDB     MOVFF PLUSW2, TBLPTRH
+086A  FFF7     NOP
+086C  0008     TBLRD*
+086E  50F5     MOVF TABLAT, W, ACCESS
+0870  E00F     BZ 0x890
+088E  D7E8     BRA 0x860
+53:                    sendVisibleByte(*bytes++);
+0872  0EFD     MOVLW 0xFD
+0874  CFDB     MOVFF PLUSW2, TBLPTRL
+0876  FFF6     NOP
+0878  2ADB     INCF PLUSW2, F, ACCESS
+087A  0EFE     MOVLW 0xFE
+087C  CFDB     MOVFF PLUSW2, TBLPTRH
+087E  FFF7     NOP
+0880  E301     BNC 0x884
+0882  2ADB     INCF PLUSW2, F, ACCESS
+0884  0008     TBLRD*
+0886  50F5     MOVF TABLAT, W, ACCESS
+0888  6EE6     MOVWF POSTINC1, ACCESS
+088A  DFE3     RCALL sendVisibleByte
+088C  52E5     MOVF POSTDEC1, F, ACCESS
+54:                }
+55:            }
+0890  D156     BRA __pa_10
+56:            
+57:            void sendDigit(unsigned char digit) {
+0892  D91F     RCALL __pa_1
+58:                if (digit >= 10)
+0894  0E0A     MOVLW 0xA
+0896  6EF3     MOVWF PRODL, ACCESS
+0898  0EFE     MOVLW 0xFE
+089A  CFDB     MOVFF PLUSW2, PRODH
+089C  FFF4     NOP
+089E  50F3     MOVF PRODL, W, ACCESS
+08A0  5CF4     SUBWF PRODH, W, ACCESS
+08A2  E305     BNC 0x8AE
+59:                    sendVisibleByte(digit + 65 - 10);
+08A4  0EFE     MOVLW 0xFE
+08A6  50DB     MOVF PLUSW2, W, ACCESS
+08A8  0F41     ADDLW 0x41
+08AA  0FF6     ADDLW 0xF6
+60:                else
+08AC  D003     BRA 0x8B4
+61:                    sendVisibleByte(digit + 48);
+08AE  0EFE     MOVLW 0xFE
+08B0  50DB     MOVF PLUSW2, W, ACCESS
+08B2  0F30     ADDLW 0x30
+08B4  6EE6     MOVWF POSTINC1, ACCESS
+08B6  DFCD     RCALL sendVisibleByte
+08B8  D10A     BRA __pa_0
+62:            }
+63:            
+64:            void sendCharAsBase(unsigned char num, unsigned char base, unsigned char padOutput) {
+08BA  D90B     RCALL __pa_1
+08BC  0E0B     MOVLW 0xB
+08BE  26E1     ADDWF FSR1L, F, ACCESS
+65:                unsigned char quotient;
+66:                unsigned char remainder;
+67:                unsigned char i = 0;
+08C0  0E02     MOVLW 0x2
+08C2  6ADB     CLRF PLUSW2, ACCESS
+68:                unsigned char digits[8];
+69:                
+70:                while((padOutput == 0 && quotient != 0) || (padOutput != 0 && i < 8)) {
+08C4  0EFC     MOVLW 0xFC
+08C6  50DB     MOVF PLUSW2, W, ACCESS
+08C8  E102     BNZ 0x8CE
+08CA  50DF     MOVF INDF2, W, ACCESS
+08CC  E10B     BNZ 0x8E4
+08CE  0EFC     MOVLW 0xFC
+08D0  50DB     MOVF PLUSW2, W, ACCESS
+08D2  E02E     BZ 0x930
+08D4  0E08     MOVLW 0x8
+08D6  6EF3     MOVWF PRODL, ACCESS
+08D8  0E02     MOVLW 0x2
+08DA  CFDB     MOVFF PLUSW2, PRODH
+08DC  FFF4     NOP
+08DE  50F3     MOVF PRODL, W, ACCESS
+08E0  5CF4     SUBWF PRODH, W, ACCESS
+08E2  E226     BC 0x930
+092E  D7CA     BRA 0x8C4
+71:                    quotient = num / base;
+08E4  0EFD     MOVLW 0xFD
+08E6  CFDB     MOVFF PLUSW2, __tmp_0
+08E8  F014     NOP
+08EA  C014     MOVFF __tmp_0, 0xE
+08EC  F00E     NOP
+08EE  0EFE     MOVLW 0xFE
+08F0  CFDB     MOVFF PLUSW2, 0x9
+08F2  F009     NOP
+08F4  EC70     CALL 0x10E0, 0
+08F6  F008     NOP
+08F8  5009     MOVF 0x9, W, ACCESS
+08FA  6EDF     MOVWF INDF2, ACCESS
+72:            
+73:                    remainder = num - quotient*base;
+08FC  0EFE     MOVLW 0xFE
+08FE  CFDB     MOVFF PLUSW2, POSTINC1
+0900  FFE6     NOP
+0902  0EFD     MOVLW 0xFD
+0904  50DB     MOVF PLUSW2, W, ACCESS
+0906  02DF     MULWF INDF2, ACCESS
+0908  50F3     MOVF PRODL, W, ACCESS
+090A  52E5     MOVF POSTDEC1, F, ACCESS
+090C  5CE7     SUBWF INDF1, W, ACCESS
+090E  6EE7     MOVWF INDF1, ACCESS
+0910  0E01     MOVLW 0x1
+0912  CFE7     MOVFF INDF1, PLUSW2
+0914  FFDB     NOP
+74:                    num = quotient;
+0916  0EFE     MOVLW 0xFE
+0918  CFDF     MOVFF INDF2, PLUSW2
+091A  FFDB     NOP
+75:            
+76:                    digits[i++] = remainder;
+091C  D8E8     RCALL __pa_4
+091E  CFDB     MOVFF PLUSW2, PRODL
+0920  FFF3     NOP
+0922  2ADB     INCF PLUSW2, F, ACCESS
+0924  50F3     MOVF PRODL, W, ACCESS
+0926  D8EA     RCALL __pa_5
+0928  0E01     MOVLW 0x1
+092A  CFDB     MOVFF PLUSW2, INDF0
+092C  FFEF     NOP
+0AEE  50D9     MOVF FSR2L, W, ACCESS
+0AF0  0F03     ADDLW 0x3
+0AF2  6E14     MOVWF __tmp_0, ACCESS
+0AF4  CFDA     MOVFF FSR2H, 0x15
+0AF6  F015     NOP
+0AF8  0E02     MOVLW 0x2
+0AFA  0012     RETURN 0
+0AFC  010F     MOVLB 0xF
+0AFE  2414     ADDWF __tmp_0, W, ACCESS
+0B00  6EE9     MOVWF FSR0L, ACCESS
+0B02  0E00     MOVLW 0x0
+0B04  20DA     ADDWFC FSR2H, W, ACCESS
+0B06  6EEA     MOVWF FSR0H, ACCESS
+0B08  0012     RETURN 0
+77:                }
+78:                
+79:                while (i != 0) {
+0930  0E02     MOVLW 0x2
+0932  50DB     MOVF PLUSW2, W, ACCESS
+0934  E009     BZ 0x948
+0946  D7F4     BRA 0x930
+80:                    sendDigit(digits[--i]);
+0936  D8DB     RCALL __pa_4
+0938  06DB     DECF PLUSW2, F, ACCESS
+093A  50DB     MOVF PLUSW2, W, ACCESS
+093C  D8DF     RCALL __pa_5
+093E  50EF     MOVF INDF0, W, ACCESS
+0940  6EE6     MOVWF POSTINC1, ACCESS
+0942  DFA7     RCALL sendDigit
+0944  52E5     MOVF POSTDEC1, F, ACCESS
+81:                }
+82:            }
+0948  0E0B     MOVLW 0xB
+094A  5CE1     SUBWF FSR1L, W, ACCESS
+094C  E202     BC 0x952
+094E  6AE1     CLRF FSR1L, ACCESS
+0950  52E5     MOVF POSTDEC1, F, ACCESS
+0952  6EE1     MOVWF FSR1L, ACCESS
+0954  D0F4     BRA __pa_10
+83:            
+84:            void sendIntAsBase(unsigned int num, unsigned int base) {
+0956  D8BD     RCALL __pa_1
+0958  0E14     MOVLW 0x14
+095A  26E1     ADDWF FSR1L, F, ACCESS
+85:                unsigned int quotient;
+86:                char remainder;
+87:                char i = 0;
+095C  0E03     MOVLW 0x3
+095E  6ADB     CLRF PLUSW2, ACCESS
+88:                char digits[16];
+89:            
+90:                while(1) {
+91:                    quotient = num / base;
+0960  0EFD     MOVLW 0xFD
+0962  CFDB     MOVFF PLUSW2, 0x8
+0964  F008     NOP
+0966  0EFE     MOVLW 0xFE
+0968  CFDB     MOVFF PLUSW2, 0x9
+096A  F009     NOP
+096C  0EFB     MOVLW 0xFB
+096E  CFDB     MOVFF PLUSW2, 0xD
+0970  F00D     NOP
+0972  0EFC     MOVLW 0xFC
+0974  CFDB     MOVFF PLUSW2, 0xE
+0976  F00E     NOP
+0978  EC1B     CALL 0x1036, 0
+097A  F008     NOP
+097C  C008     MOVFF 0x8, POSTINC2
+097E  FFDE     NOP
+0980  C009     MOVFF 0x9, POSTDEC2
+0982  FFDD     NOP
+92:                    remainder = (char)(num - quotient*base);
+0984  0EFD     MOVLW 0xFD
+0986  CFDB     MOVFF PLUSW2, 0x16
+0988  F016     NOP
+098A  0EFE     MOVLW 0xFE
+098C  CFDB     MOVFF PLUSW2, 0x17
+098E  F017     NOP
+0990  0EFB     MOVLW 0xFB
+0992  CFDB     MOVFF PLUSW2, 0x8
+0994  F008     NOP
+0996  0EFC     MOVLW 0xFC
+0998  CFDB     MOVFF PLUSW2, 0x9
+099A  F009     NOP
+099C  CFDE     MOVFF POSTINC2, 0xD
+099E  F00D     NOP
+09A0  CFDD     MOVFF POSTDEC2, 0xE
+09A2  F00E     NOP
+09A4  ECE6     CALL 0xFCC, 0
+09A6  F007     NOP
+09A8  5006     MOVF offset, W, ACCESS
+09AA  5C16     SUBWF 0x16, W, ACCESS
+09AC  6E14     MOVWF __tmp_0, ACCESS
+09AE  5007     MOVF 0x7, W, ACCESS
+09B0  5817     SUBWFB 0x17, W, ACCESS
+09B2  0E02     MOVLW 0x2
+09B4  C014     MOVFF __tmp_0, PLUSW2
+09B6  FFDB     NOP
+93:                    num = quotient;
+09B8  CFD9     MOVFF FSR2L, FSR0L
+09BA  FFE9     NOP
+09BC  CFDA     MOVFF FSR2H, FSR0H
+09BE  FFEA     NOP
+09C0  0EFD     MOVLW 0xFD
+09C2  CFEE     MOVFF POSTINC0, PLUSW2
+09C4  FFDB     NOP
+09C6  0EFE     MOVLW 0xFE
+09C8  CFED     MOVFF POSTDEC0, PLUSW2
+09CA  FFDB     NOP
+94:            
+95:                    digits[i++] = remainder;
+09CC  D89E     RCALL __pa_6
+09CE  CFDB     MOVFF PLUSW2, PRODL
+09D0  FFF3     NOP
+09D2  2ADB     INCF PLUSW2, F, ACCESS
+09D4  50F3     MOVF PRODL, W, ACCESS
+09D6  6E16     MOVWF 0x16, ACCESS
+09D8  6A17     CLRF 0x17, ACCESS
+09DA  BE16     BTFSC 0x16, 7, ACCESS
+09DC  6817     SETF 0x17, ACCESS
+09DE  D89C     RCALL __pa_7
+09E0  0E02     MOVLW 0x2
+09E2  CFDB     MOVFF PLUSW2, INDF0
+09E4  FFEF     NOP
+0B0A  50D9     MOVF FSR2L, W, ACCESS
+0B0C  0F04     ADDLW 0x4
+0B0E  6E14     MOVWF __tmp_0, ACCESS
+0B10  CFDA     MOVFF FSR2H, 0x15
+0B12  F015     NOP
+0B14  0E03     MOVLW 0x3
+0B16  0012     RETURN 0
+0B18  5014     MOVF __tmp_0, W, ACCESS
+0B1A  2416     ADDWF 0x16, W, ACCESS
+0B1C  6EE9     MOVWF FSR0L, ACCESS
+0B1E  5015     MOVF 0x15, W, ACCESS
+0B20  2017     ADDWFC 0x17, W, ACCESS
+0B22  6EEA     MOVWF FSR0H, ACCESS
+0B24  0012     RETURN 0
+96:            
+97:                    if (quotient == 0) break;
+09E6  CFD9     MOVFF FSR2L, FSR0L
+09E8  FFE9     NOP
+09EA  CFDA     MOVFF FSR2H, FSR0H
+09EC  FFEA     NOP
+09EE  50EE     MOVF POSTINC0, W, ACCESS
+09F0  10ED     IORWF POSTDEC0, W, ACCESS
+09F2  E1B6     BNZ 0x960
+98:                }
+99:            
+100:               while (i != 0) {
+09F4  0E03     MOVLW 0x3
+09F6  50DB     MOVF PLUSW2, W, ACCESS
+09F8  E00D     BZ 0xA14
+0A12  D7F0     BRA 0x9F4
+101:                   sendDigit(digits[--i]);
+09FA  D887     RCALL __pa_6
+09FC  06DB     DECF PLUSW2, F, ACCESS
+09FE  CFDB     MOVFF PLUSW2, 0x16
+0A00  F016     NOP
+0A02  6A17     CLRF 0x17, ACCESS
+0A04  BE16     BTFSC 0x16, 7, ACCESS
+0A06  6817     SETF 0x17, ACCESS
+0A08  D887     RCALL __pa_7
+0A0A  50EF     MOVF INDF0, W, ACCESS
+0A0C  6EE6     MOVWF POSTINC1, ACCESS
+0A0E  DF41     RCALL sendDigit
+0A10  52E5     MOVF POSTDEC1, F, ACCESS
+102:               }
+103:           }
+0A14  0E14     MOVLW 0x14
+0A16  5CE1     SUBWF FSR1L, W, ACCESS
+0A18  E202     BC 0xA1E
+0A1A  6AE1     CLRF FSR1L, ACCESS
+0A1C  52E5     MOVF POSTDEC1, F, ACCESS
+0A1E  6EE1     MOVWF FSR1L, ACCESS
+0A20  D08E     BRA __pa_10
+104:           
+105:           void sendDec(unsigned char num) {
+0A22  D857     RCALL __pa_1
+106:               sendCharAsBase(num,10,0);
+0A24  6AE6     CLRF POSTINC1, ACCESS
+0A26  0E0A     MOVLW 0xA
+0A28  D07E     BRA __pa_8
+107:           }
+108:           
+109:           void sendIntDec(unsigned int num) {
+0A2A  D853     RCALL __pa_1
+110:               sendIntAsBase(num,10);
+0A2C  0E0A     MOVLW 0xA
+0A2E  6EE6     MOVWF POSTINC1, ACCESS
+0A30  6AE6     CLRF POSTINC1, ACCESS
+0A32  0EFD     MOVLW 0xFD
+0A34  CFDB     MOVFF PLUSW2, POSTINC1
+0A36  FFE6     NOP
+0A38  D856     RCALL __pa_3
+0A3A  DF8D     RCALL sendIntAsBase
+0A3C  52E5     MOVF POSTDEC1, F, ACCESS
+0A3E  52E5     MOVF POSTDEC1, F, ACCESS
+0A40  52E5     MOVF POSTDEC1, F, ACCESS
+0A42  D045     BRA __pa_0
+111:           }
+112:           
+113:           void sendHex(unsigned char num) {
+0A44  D846     RCALL __pa_1
+114:               sendLiteralBytes("0x");
+0A46  0E80     MOVLW 0x80
+0A48  6EE6     MOVWF POSTINC1, ACCESS
+0A4A  0E10     MOVLW 0x10
+0A4C  D847     RCALL __pa_2
+115:               sendCharAsBase(num,16,0);
+0A4E  6AE6     CLRF POSTINC1, ACCESS
+0A50  0E10     MOVLW 0x10
+0A52  D069     BRA __pa_8
+116:           }
+117:           
+118:           void sendBin(unsigned char num) {
+0A54  D878     RCALL __pa_11
+0B46  DFC5     RCALL __pa_1
+119:               sendLiteralBytes("0b");
+0ADC  6EE6     MOVWF POSTINC1, ACCESS
+0ADE  DEBF     RCALL sendLiteralBytes
+0AE0  52E5     MOVF POSTDEC1, F, ACCESS
+0AE2  52E5     MOVF POSTDEC1, F, ACCESS
+0AE4  0012     RETURN 0
+0B48  0E7D     MOVLW 0x7D
+0B4A  6EE6     MOVWF POSTINC1, ACCESS
+0B4C  0E10     MOVLW 0x10
+0B4E  EF6E     GOTO 0xADC
+0B50  F005     NOP
+120:               sendCharAsBase(num,2,0);
+0A56  6AE6     CLRF POSTINC1, ACCESS
+0A58  0E02     MOVLW 0x2
+0A5A  D065     BRA __pa_8
+121:           }
+122:           
+123:           void sendBinPad(unsigned char num) {
+0A5C  D874     RCALL __pa_11
+124:               sendLiteralBytes("0b");
+125:               sendCharAsBase(num,2,1);
+0A5E  0E01     MOVLW 0x1
+0A60  6EE6     MOVWF POSTINC1, ACCESS
+0A62  0E02     MOVLW 0x2
+0A64  D060     BRA __pa_8
+0B26  6EE6     MOVWF POSTINC1, ACCESS
+0B28  DFDE     RCALL __pa_3
+0B2A  DEC7     RCALL sendCharAsBase
+0B2C  52E5     MOVF POSTDEC1, F, ACCESS
+0B2E  52E5     MOVF POSTDEC1, F, ACCESS
+0B30  D7CE     BRA __pa_0
+126:           }
+127:           
+128:           void fill(void) {
+0A66  D835     RCALL __pa_1
+0A68  52E6     MOVF POSTINC1, F, ACCESS
+129:               char i = 16*2-charactersSinceFill-1;
+0A6A  0E20     MOVLW 0x20
+0A6C  010E     MOVLB 0xE
+0A6E  80D8     BSF STATUS, 0, ACCESS
+0A70  5512     SUBFWB 0x12, W, BANKED
+0A72  0FFF     ADDLW 0xFF
+0A74  6EDF     MOVWF INDF2, ACCESS
+130:               //sendDec(i);
+131:               
+132:               while(i-- >= 0) {
+0A76  50DF     MOVF INDF2, W, ACCESS
+0A78  06DF     DECF INDF2, F, ACCESS
+0A7A  6E14     MOVWF __tmp_0, ACCESS
+0A7C  34E8     RLCF WREG, W, ACCESS
+0A7E  E205     BC 0xA8A
+0A88  D7F6     BRA 0xA76
+133:                   sendLiteralBytes(" ");
+0A80  0E7B     MOVLW 0x7B
+0A82  6EE6     MOVWF POSTINC1, ACCESS
+0A84  0E10     MOVLW 0x10
+0A86  D82A     RCALL __pa_2
+134:               }
+135:               charactersSinceFill = 0;
+0A8A  010E     MOVLB 0xE
+0A8C  6B12     CLRF 0x12, BANKED
+136:           }
+0A8E  D01F     BRA __pa_0
+137:           
+138:           void fillLine(void) {
+0A90  D820     RCALL __pa_1
+0A92  52E6     MOVF POSTINC1, F, ACCESS
+0AD2  CFD9     MOVFF FSR2L, POSTINC1
+0AD4  FFE6     NOP
+0AD6  CFE1     MOVFF FSR1L, FSR2L
+0AD8  FFD9     NOP
+0ADA  0012     RETURN 0
+139:               char i = 16-charactersSinceFill-1;
+0A94  0E10     MOVLW 0x10
+0A96  010E     MOVLB 0xE
+0A98  80D8     BSF STATUS, 0, ACCESS
+0A9A  5512     SUBFWB 0x12, W, BANKED
+0A9C  0FFF     ADDLW 0xFF
+0A9E  6EDF     MOVWF INDF2, ACCESS
+140:               if (charactersSinceFill >= 16) return fill();
+0AA0  0E10     MOVLW 0x10
+0AA2  6EE7     MOVWF INDF1, ACCESS
+0AA4  1912     XORWF 0x12, W, BANKED
+0AA6  AEE8     BTFSS WREG, 7, ACCESS
+0AA8  D002     BRA 0xAAE
+0AAA  34E7     RLCF INDF1, W, ACCESS
+0AAC  D002     BRA 0xAB2
+0AAE  50E7     MOVF INDF1, W, ACCESS
+0AB0  5D12     SUBWF 0x12, W, BANKED
+0AB2  E20C     BC 0xACC
+141:           
+142:               while(i-- >= 0) {
+0AB4  50DF     MOVF INDF2, W, ACCESS
+0AB6  06DF     DECF INDF2, F, ACCESS
+0AB8  6E14     MOVWF __tmp_0, ACCESS
+0ABA  34E8     RLCF WREG, W, ACCESS
+0ABC  E207     BC 0xACC
+0ACA  D7F4     BRA 0xAB4
+143:                   sendLiteralBytes(" ");
+0ABE  0E7B     MOVLW 0x7B
+0AC0  6EE6     MOVWF POSTINC1, ACCESS
+0AC2  0E10     MOVLW 0x10
+0AC4  D80B     RCALL __pa_2
+144:                   charactersSinceFill ++;
+0AC6  010E     MOVLB 0xE
+0AC8  2B12     INCF 0x12, F, BANKED
+145:               }
+146:           }
+0ACC  D000     BRA __pa_0
+0ACE  52E5     MOVF POSTDEC1, F, ACCESS
+0AD0  D036     BRA __pa_10
+0B3E  52E5     MOVF POSTDEC1, F, ACCESS
+0B40  CFE7     MOVFF INDF1, FSR2L
+0B42  FFD9     NOP
+0B44  0012     RETURN 0
+---  /Users/julian/Documents/Programming/tinkering/pic18f25k80.X/nRF2401.c  -----------------------------
+1:             #include <p18f25k80.h>
+2:             #include "config.h"
+3:             #include "nRF2401.h"
+4:             #include "constants.h"
+5:             #include <delays.h>
+6:             
+7:             unsigned char TX_ADDRESS[TX_ADR_WIDTH] = {0x34,0x43,0x10,0x10,0x01}; // Define a static TX address
+8:             
+9:             unsigned char SPI_RW(unsigned char);
+10:            unsigned char SPI_RW_Reg(unsigned char, unsigned char);
+11:            unsigned char SPI_Read(unsigned char);
+12:            
+13:            //============ Status_nRF ===================================================
+14:            unsigned char getStatus(void) {
+0B52  D9B3     RCALL __pa_19
+15:            	unsigned char status;
+16:            	CSN = CLEAR;
+0B54  9482     BCF PORTC, 2, ACCESS
+17:            	SSPBUF = 0xFF;
+0B56  68C9     SETF SSPBUF, ACCESS
+18:            	while(~SSPSTATbits.BF);
+0B58  A0C7     BTFSS SSPSTAT, 0, ACCESS
+0B5A  D7FE     BRA 0xB58
+19:            	status = SSPBUF;
+0B5C  50C9     MOVF SSPBUF, W, ACCESS
+0B5E  6EDF     MOVWF INDF2, ACCESS
+20:            	CSN = SET;
+0B60  D1A4     BRA __pa_17
+21:            	return status;
+22:            }
+23:            
+24:            /**************************************************
+25:             * Function: SPI_RW();
+26:             *
+27:             * Description:
+28:             * Writes one unsigned char to nRF24L01, and return the unsigned char read
+29:             * from nRF24L01 during write, according to SPI protocol
+30:             **************************************************/
+31:            unsigned char SPI_RW(unsigned char data)
+0B62  D92D     RCALL __pa_2
+32:            {
+33:            	SPI_BUFFER = data;
+0B64  0EFE     MOVLW 0xFE
+0B66  50DB     MOVF PLUSW2, W, ACCESS
+0B68  6EC9     MOVWF SSPBUF, ACCESS
+34:            	while(!SPI_BUFFER_FULL_STAT);
+0B6A  A0C7     BTFSS SSPSTAT, 0, ACCESS
+0B6C  D7FE     BRA 0xB6A
+35:            	data = SPI_BUFFER;
+0B6E  0EFE     MOVLW 0xFE
+0B70  CFC9     MOVFF SSPBUF, PLUSW2
+0B72  FFDB     NOP
+36:            	return(data);
+0B74  50DB     MOVF PLUSW2, W, ACCESS
+37:            }
+0B76  D128     BRA __pa_3
+38:            /**************************************************/
+39:            
+40:            /**************************************************
+41:             * Function: SPI_RW_Reg();
+42:             *
+43:             * Description:
+44:             * Writes value 'value' to register 'reg'
+45:             * must be used along with the WRITE mask
+46:            /**************************************************/
+47:            unsigned char SPI_RW_Reg(unsigned char reg, unsigned char value)
+0B78  D9A0     RCALL __pa_19
+48:            {
+49:              unsigned char status;
+50:            
+51:              CSN = CLEAR;                   // CSN low, init SPI transaction
+0B7A  D92A     RCALL __pa_4
+52:              status = SPI_RW(reg);             // select register
+0B7C  6EDF     MOVWF INDF2, ACCESS
+53:              SPI_RW(value);                    // ..and write value to it..
+0B7E  0EFD     MOVLW 0xFD
+0B80  CFDB     MOVFF PLUSW2, POSTINC1
+0B82  FFE6     NOP
+0B84  D99D     RCALL __pa_20
+54:              CSN = SET;                    // CSN high again
+0B86  D191     BRA __pa_17
+55:            
+56:              return(status);                   // return nRF24L01 status unsigned char
+57:            }
+58:            /**************************************************/
+59:            
+60:            /**************************************************
+61:             * Function: SPI_Read();
+62:             *
+63:             * Description:
+64:             * Read one unsigned char from nRF24L01 register, 'reg'
+65:            /**************************************************/
+66:            unsigned char SPI_Read(unsigned char reg)
+0B88  D998     RCALL __pa_19
+67:            {
+68:              unsigned char reg_val;
+69:            
+70:              CSN = CLEAR;                // CSN low, initialize SPI communication...
+0B8A  D922     RCALL __pa_4
+71:              SPI_RW(reg);                   // Select register to read from..
+72:              reg_val = SPI_RW(0);           // ..then read register value
+0B8C  6AE6     CLRF POSTINC1, ACCESS
+0B8E  D998     RCALL __pa_20
+0B90  6EDF     MOVWF INDF2, ACCESS
+73:              CSN = SET;                  // CSN high, terminate SPI communication
+0B92  D18B     BRA __pa_17
+0EAA  8482     BSF PORTC, 2, ACCESS
+74:            
+75:              return(reg_val);               // return register value
+0EAC  50DF     MOVF INDF2, W, ACCESS
+76:            }
+0EAE  52E5     MOVF POSTDEC1, F, ACCESS
+0EB0  D78B     BRA __pa_3
+77:            /**************************************************/
+78:            
+79:            /**************************************************
+80:             * Function: SPI_Read_Buf();
+81:             *
+82:             * Description:
+83:             * Reads 'unsigned chars' #of unsigned chars from register 'reg'
+84:             * Typically used to read RX payload, Rx/Tx address
+85:            /**************************************************/
+86:            unsigned char SPI_Read_Buf(unsigned char reg, unsigned char *pBuf, unsigned char bytes)
+0B94  D96A     RCALL __pa_12
+0E6A  DFA9     RCALL __pa_2
+0E6C  0E02     MOVLW 0x2
+0E6E  26E1     ADDWF FSR1L, F, ACCESS
+87:            {
+88:              unsigned char status,i;
+89:            
+90:              CSN = CLEAR;                   // Set CSN low, init SPI tranaction
+0E70  DFAF     RCALL __pa_4
+91:              status = SPI_RW(reg);       	    // Select register to write to and read status unsigned char
+0E72  6EDF     MOVWF INDF2, ACCESS
+92:            
+93:              for(i=0;i<bytes;i++)
+0B96  D93C     RCALL __pa_8
+0B98  E211     BC 0xBBC
+0BB6  0E01     MOVLW 0x1
+0BB8  2ADB     INCF PLUSW2, F, ACCESS
+0BBA  D7ED     BRA 0xB96
+0E10  0EFB     MOVLW 0xFB
+0E12  50DB     MOVF PLUSW2, W, ACCESS
+0E14  6EF3     MOVWF PRODL, ACCESS
+0E16  0E01     MOVLW 0x1
+0E18  CFDB     MOVFF PLUSW2, PRODH
+0E1A  FFF4     NOP
+0E1C  50F3     MOVF PRODL, W, ACCESS
+0E1E  5CF4     SUBWF PRODH, W, ACCESS
+0E20  0012     RETURN 0
+0E74  0E01     MOVLW 0x1
+0E76  6ADB     CLRF PLUSW2, ACCESS
+0E78  0012     RETURN 0
+94:              {
+95:                pBuf[i] = SPI_RW(0xFF);    // Perform SPI_RW to read unsigned char from nRF24L01
+0B9A  68E6     SETF POSTINC1, ACCESS
+0B9C  D991     RCALL __pa_20
+0B9E  6EE6     MOVWF POSTINC1, ACCESS
+0BA0  0E01     MOVLW 0x1
+0BA2  50DB     MOVF PLUSW2, W, ACCESS
+0BA4  6EE7     MOVWF INDF1, ACCESS
+0BA6  D93D     RCALL __pa_9
+0BA8  50E7     MOVF INDF1, W, ACCESS
+0BAA  26E9     ADDWF FSR0L, F, ACCESS
+0BAC  0E00     MOVLW 0x0
+0BAE  22EA     ADDWFC FSR0H, F, ACCESS
+0BB0  52E5     MOVF POSTDEC1, F, ACCESS
+0BB2  50E7     MOVF INDF1, W, ACCESS
+0BB4  6EEF     MOVWF INDF0, ACCESS
+0E22  0EFC     MOVLW 0xFC
+0E24  CFDB     MOVFF PLUSW2, FSR0L
+0E26  FFE9     NOP
+0E28  0EFD     MOVLW 0xFD
+0E2A  CFDB     MOVFF PLUSW2, FSR0H
+0E2C  FFEA     NOP
+0E2E  0012     RETURN 0
+96:            	//pBuf[0] = 0x77;
+97:            	//pBuf[1] = 0x88;
+98:              }
+99:            
+100:             CSN = SET;                   // Set CSN high again
+0BBC  8482     BSF PORTC, 2, ACCESS
+101:           
+102:             return(status);                  // return nRF24L01 status unsigned char
+0BBE  50DF     MOVF INDF2, W, ACCESS
+103:           }
+0BC0  6E14     MOVWF __tmp_0, ACCESS
+0BC2  0E02     MOVLW 0x2
+0BC4  5CE1     SUBWF FSR1L, W, ACCESS
+0BC6  E202     BC 0xBCC
+0BC8  6AE1     CLRF FSR1L, ACCESS
+0BCA  52E5     MOVF POSTDEC1, F, ACCESS
+0BCC  6EE1     MOVWF FSR1L, ACCESS
+0BCE  5014     MOVF __tmp_0, W, ACCESS
+0BD0  D0FB     BRA __pa_3
+104:           /**************************************************/
+105:           
+106:           /**************************************************
+107:            * Function: SPI_Write_Buf();
+108:            *
+109:            * Description:
+110:            * Writes contents of buffer '*pBuf' to nRF24L01
+111:            * Typically used to write TX payload, Rx/Tx address
+112:           /**************************************************/
+113:           unsigned char SPI_Write_Buf(unsigned char reg, unsigned char *pBuf, unsigned char bytes)
+0BD2  D94B     RCALL __pa_12
+114:           {
+115:             unsigned char status,i;
+116:           
+117:             CSN = CLEAR;                   // Set CSN low, init SPI tranaction
+0DD0  9482     BCF PORTC, 2, ACCESS
+118:             status = SPI_RW(reg);             // Select register to write to and read status unsigned char
+0DD2  0EFE     MOVLW 0xFE
+0DD4  CFDB     MOVFF PLUSW2, POSTINC1
+0DD6  FFE6     NOP
+0DD8  EF60     GOTO 0xEC0
+0DDA  F007     NOP
+0EC0  DE50     RCALL SPI_RW
+0EC2  52E5     MOVF POSTDEC1, F, ACCESS
+0EC4  0012     RETURN 0
+119:             for(i=0;i<bytes; i++)             // then write all unsigned char in buffer(*pBuf)
+0BD4  D91D     RCALL __pa_8
+0BD6  E210     BC 0xBF8
+0BF2  0E01     MOVLW 0x1
+0BF4  2ADB     INCF PLUSW2, F, ACCESS
+0BF6  D7EE     BRA 0xBD4
+120:             {
+121:               SPI_RW(*pBuf);
+0BD8  D924     RCALL __pa_9
+0BDA  50EF     MOVF INDF0, W, ACCESS
+0BDC  6EE6     MOVWF POSTINC1, ACCESS
+0BDE  D970     RCALL __pa_20
+122:           	*pBuf++;
+0BE0  0EFC     MOVLW 0xFC
+0BE2  CFDB     MOVFF PLUSW2, FSR0L
+0BE4  FFE9     NOP
+0BE6  2ADB     INCF PLUSW2, F, ACCESS
+0BE8  0EFD     MOVLW 0xFD
+0BEA  CFDB     MOVFF PLUSW2, FSR0H
+0BEC  FFEA     NOP
+0BEE  E301     BNC 0xBF2
+0BF0  2ADB     INCF PLUSW2, F, ACCESS
+123:             }
+124:             CSN = SET;                   // Set CSN high again
+0BF8  8482     BSF PORTC, 2, ACCESS
+125:             return(status);                  // return nRF24L01 status unsigned char
+0BFA  50DF     MOVF INDF2, W, ACCESS
+126:           }
+0BFC  6E14     MOVWF __tmp_0, ACCESS
+0BFE  0E02     MOVLW 0x2
+0C00  5CE1     SUBWF FSR1L, W, ACCESS
+0C02  E202     BC 0xC08
+0C04  6AE1     CLRF FSR1L, ACCESS
+0C06  52E5     MOVF POSTDEC1, F, ACCESS
+0C08  6EE1     MOVWF FSR1L, ACCESS
+0C0A  5014     MOVF __tmp_0, W, ACCESS
+0C0C  D0DD     BRA __pa_3
+127:           /**************************************************/
+128:           
+129:           void nrf_init(void) {
+130:           	//===configure SPI for nordic RF module
+131:           	SPI_STATUS = 0b00000000;	//SPI, clock on idle to active clk trans
+0C0E  6AC7     CLRF SSPSTAT, ACCESS
+132:           	SPI_CLK_EDGE = 1; 	//clock on idle to active clk trans
+0C10  8CC7     BSF SSPSTAT, 6, ACCESS
+133:           	SPI_CONFIG_1 = 0b00100010;	//SPI SETup. clk 0b0010=1/64, 0b0001=1/16
+0C12  0E22     MOVLW 0x22
+0C14  6EC6     MOVWF SSPCON1, ACCESS
+134:           	SPI_CLK_POL = 0;	//clock polarity, idle low
+0C16  98C6     BCF SSPCON1, 4, ACCESS
+135:           	SPI_ENABLE = SET;	//enable SPI module
+0C18  8AC6     BSF SSPCON1, 5, ACCESS
+136:           	CE = SET;  //default to Standby II, CLEAR to default to Standby I (which is low power mode; no TX/RX functions)
+0C1A  8282     BSF PORTC, 1, ACCESS
+137:           	CSN = SET;
+0C1C  8482     BSF PORTC, 2, ACCESS
+138:           }
+0C1E  0012     RETURN 0
+139:           
+140:           /**************************************************
+141:            * Function: nrf_Send();
+142:            *
+143:           /**************************************************/
+144:           unsigned char nrf_Send(unsigned char * tx_buf, unsigned char * rx_buf) {
+0C20  D94C     RCALL __pa_19
+145:           //unsigned char nrf_Send(void) {
+146:           	char status;
+147:           	//unsigned char tx_buf[TX_PLOAD_WIDTH];
+148:           	//volatile unsigned char rx_buf[32];
+149:           
+150:           	SPI_RW_Reg(FLUSH_TX,0);
+0C22  6AE6     CLRF POSTINC1, ACCESS
+0C24  0EE1     MOVLW 0xE1
+0C26  D8BF     RCALL __pa_0
+151:           
+152:           	SPI_RW_Reg(WRITE_REG + STATUS_REG, MAX_RT);	//CLEAR max RT bit
+0C28  0E10     MOVLW 0x10
+0C2A  D943     RCALL __pa_18
+153:           	SPI_Write_Buf(WR_TX_PLOAD,tx_buf,TX_PLOAD_WIDTH); //load the data into the NRF
+0C2C  D932     RCALL __pa_15
+0C2E  CFDB     MOVFF PLUSW2, POSTINC1
+0C30  FFE6     NOP
+0C32  0EA0     MOVLW 0xA0
+0C34  D8BD     RCALL __pa_1
+0E92  0E20     MOVLW 0x20
+0E94  6EE6     MOVWF POSTINC1, ACCESS
+0E96  0EFD     MOVLW 0xFD
+0E98  CFDB     MOVFF PLUSW2, POSTINC1
+0E9A  FFE6     NOP
+0E9C  0EFE     MOVLW 0xFE
+0E9E  0012     RETURN 0
+154:           
+155:           	//wait for response
+156:           	CE = SET;
+0C36  8282     BSF PORTC, 1, ACCESS
+157:           	Delay1KTCYx(60);
+0C38  0E3C     MOVLW 0x3C
+0C3A  6EE6     MOVWF POSTINC1, ACCESS
+0C3C  EC42     CALL 0x1084, 0
+0C3E  F008     NOP
+0C40  52E5     MOVF POSTDEC1, F, ACCESS
+158:           	CE = CLEAR;
+0C42  9282     BCF PORTC, 1, ACCESS
+159:                   //Delay1KTCYx(4);
+160:           
+161:           	status = getStatus();
+0C44  DF86     RCALL getStatus
+0C46  6EDF     MOVWF INDF2, ACCESS
+162:           	if(status & RX_DR) {
+0C48  ACDF     BTFSS INDF2, 6, ACCESS
+0C4A  D00E     BRA 0xC68
+163:           		SPI_RW_Reg(WRITE_REG + STATUS_REG, RX_DR);
+0C4C  0E40     MOVLW 0x40
+0C4E  D931     RCALL __pa_18
+164:           		SPI_Read_Buf(RD_RX_PLOAD,rx_buf,2);
+0C50  0E02     MOVLW 0x2
+0C52  6EE6     MOVWF POSTINC1, ACCESS
+0C54  0EFB     MOVLW 0xFB
+0C56  CFDB     MOVFF PLUSW2, POSTINC1
+0C58  FFE6     NOP
+0C5A  0EFC     MOVLW 0xFC
+0C5C  D8C6     RCALL __pa_6
+0DEA  CFDB     MOVFF PLUSW2, POSTINC1
+0DEC  FFE6     NOP
+0DEE  0E61     MOVLW 0x61
+0DF0  6EE6     MOVWF POSTINC1, ACCESS
+0DF2  DED0     RCALL SPI_Read_Buf
+0DF4  52E5     MOVF POSTDEC1, F, ACCESS
+0DF6  52E5     MOVF POSTDEC1, F, ACCESS
+0DF8  52E5     MOVF POSTDEC1, F, ACCESS
+0DFA  52E5     MOVF POSTDEC1, F, ACCESS
+0DFC  0012     RETURN 0
+165:           		SPI_RW_Reg(FLUSH_RX,0);
+0C5E  6AE6     CLRF POSTINC1, ACCESS
+0C60  0EE2     MOVLW 0xE2
+0C62  D8A1     RCALL __pa_0
+166:           		return YES_ACK;
+0C64  0E01     MOVLW 0x1
+0C66  D001     BRA 0xC6A
+167:           	} else {
+168:           		return NO_ACK;
+0C68  0E00     MOVLW 0x0
+169:           	}
+170:           }
+0C6A  52E5     MOVF POSTDEC1, F, ACCESS
+0C6C  D0AD     BRA __pa_3
+171:           /**************************************************/
+172:           
+173:           /**************************************************
+174:            * Function: nrf_Recieve();
+175:            *
+176:           /**************************************************/
+177:           unsigned char nrf_Recieve(unsigned char * rx_buf) {
+0C6E  D8A7     RCALL __pa_2
+0C70  0E24     MOVLW 0x24
+0C72  26E1     ADDWF FSR1L, F, ACCESS
+178:           	char status;
+179:           	char ffstat;
+180:           	unsigned char ACK_buf[2] = {0x12,0x34};
+0C74  0E12     MOVLW 0x12
+0C76  6EF3     MOVWF PRODL, ACCESS
+0C78  0E02     MOVLW 0x2
+0C7A  CFF3     MOVFF PRODL, PLUSW2
+0C7C  FFDB     NOP
+0C7E  0E34     MOVLW 0x34
+0C80  6EF3     MOVWF PRODL, ACCESS
+0C82  0E03     MOVLW 0x3
+0C84  CFF3     MOVFF PRODL, PLUSW2
+0C86  FFDB     NOP
+181:           	unsigned char temp_buf[32];
+182:           
+183:           	//------ load ACK payload data -------------
+184:           	SPI_RW_Reg(FLUSH_TX,0);
+0C88  6AE6     CLRF POSTINC1, ACCESS
+0C8A  0EE1     MOVLW 0xE1
+0C8C  D88C     RCALL __pa_0
+185:           	SPI_Write_Buf(W_ACK_PAYLOAD,ACK_buf,2);
+0C8E  0E02     MOVLW 0x2
+0C90  6EE6     MOVWF POSTINC1, ACCESS
+0C92  50D9     MOVF FSR2L, W, ACCESS
+0C94  0F02     ADDLW 0x2
+0C96  6EE6     MOVWF POSTINC1, ACCESS
+0C98  0E00     MOVLW 0x0
+0C9A  20DA     ADDWFC FSR2H, W, ACCESS
+0C9C  6EE6     MOVWF POSTINC1, ACCESS
+0C9E  0EA8     MOVLW 0xA8
+0CA0  D887     RCALL __pa_1
+186:           
+187:           	// ----- get status for IRQ service ---------
+188:           	status = getStatus();
+0CA2  DF57     RCALL getStatus
+0CA4  6EDF     MOVWF INDF2, ACCESS
+189:           	ffstat = SPI_Read(FIFO_STATUS);
+0CA6  D8AB     RCALL __pa_7
+0DFE  0E17     MOVLW 0x17
+0E00  6EE6     MOVWF POSTINC1, ACCESS
+0E02  DEC2     RCALL SPI_Read
+0E04  52E5     MOVF POSTDEC1, F, ACCESS
+0E06  6EE7     MOVWF INDF1, ACCESS
+0E08  0E01     MOVLW 0x1
+0E0A  CFE7     MOVFF INDF1, PLUSW2
+0E0C  FFDB     NOP
+0E0E  0012     RETURN 0
+190:           
+191:           	if(((status & RX_DR))||(!(ffstat & 0x01))) {
+0CA8  0E40     MOVLW 0x40
+0CAA  14DF     ANDWF INDF2, W, ACCESS
+0CAC  E104     BNZ 0xCB6
+0CAE  0E01     MOVLW 0x1
+0CB0  50DB     MOVF PLUSW2, W, ACCESS
+0CB2  0B01     ANDLW 0x1
+0CB4  E10B     BNZ 0xCCC
+192:           		while((ffstat & 0x01) == 0) {
+0CB6  0E01     MOVLW 0x1
+0CB8  B0DB     BTFSC PLUSW2, 0, ACCESS
+0CBA  D004     BRA 0xCC4
+0CC2  D7F9     BRA 0xCB6
+193:           			//read entire buffer---------
+194:           			SPI_Read_Buf(RD_RX_PLOAD,rx_buf,32);
+0CBC  D8EA     RCALL __pa_15
+0CBE  D895     RCALL __pa_6
+195:           			ffstat = SPI_Read(FIFO_STATUS);
+0CC0  D89E     RCALL __pa_7
+196:           		}
+197:           		SPI_RW_Reg(WRITE_REG + STATUS_REG, RX_DR);	//CLEAR RX flag
+0CC4  0E40     MOVLW 0x40
+0CC6  D8F5     RCALL __pa_18
+0EB2  6EE6     MOVWF POSTINC1, ACCESS
+0EB4  0E27     MOVLW 0x27
+0EB6  EFD3     GOTO 0xDA6
+0EB8  F006     NOP
+198:           		return YES_DATA;
+0CC8  0E01     MOVLW 0x1
+0CCA  D001     BRA 0xCCE
+199:           	} else {
+200:           		return NO_DATA;
+0CCC  0E00     MOVLW 0x0
+201:           	}
+202:           }
+0CCE  6E14     MOVWF __tmp_0, ACCESS
+0CD0  0E24     MOVLW 0x24
+0CD2  5CE1     SUBWF FSR1L, W, ACCESS
+0CD4  E202     BC 0xCDA
+0CD6  6AE1     CLRF FSR1L, ACCESS
+0CD8  52E5     MOVF POSTDEC1, F, ACCESS
+0CDA  6EE1     MOVWF FSR1L, ACCESS
+0CDC  5014     MOVF __tmp_0, W, ACCESS
+0CDE  D074     BRA __pa_3
+203:           
+204:           /**************************************************/
+205:           
+206:           
+207:           /**************************************************
+208:            * Function: initRX();
+209:            *
+210:            * Description:
+211:            * This function initializes one nRF24L01 device to
+212:            * RX Mode, SET RX address, writes RX payload width,
+213:            * select RF channel, datarate & LNA HCURR.
+214:            * After init, CE is toggled high, which means that
+215:            * this device is now ready to receive a datapacket.
+216:           /**************************************************/
+217:           void initRX(void) {
+0CE0  D8EC     RCALL __pa_19
+0DBE  CFD9     MOVFF FSR2L, POSTINC1
+0DC0  FFE6     NOP
+0DC2  CFE1     MOVFF FSR1L, FSR2L
+0DC4  FFD9     NOP
+0DC6  0012     RETURN 0
+0EBA  DF81     RCALL __pa_2
+0EBC  52E6     MOVF POSTINC1, F, ACCESS
+0EBE  0012     RETURN 0
+218:           	unsigned char status;
+219:           
+220:           	CE = CLEAR;
+0CE2  D8AD     RCALL __pa_11
+0E3E  9282     BCF PORTC, 1, ACCESS
+221:           
+222:           	SPI_Write_Buf(WRITE_REG + TX_ADDR, TX_ADDRESS, TX_ADR_WIDTH);    // Writes TX_Address to nRF24L01
+0E40  DFCD     RCALL __pa_5
+0E42  0E30     MOVLW 0x30
+0E44  DFB5     RCALL __pa_1
+223:           	SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, TX_ADDRESS, TX_ADR_WIDTH); // Use the same address on the RX device as the TX device
+0E46  DFCA     RCALL __pa_5
+0E48  0E2A     MOVLW 0x2A
+0E4A  DFB2     RCALL __pa_1
+224:           
+225:           	SPI_RW_Reg(ACTIVATE,0x73);					//activate feature register
+0E4C  0E73     MOVLW 0x73
+0E4E  6EE6     MOVWF POSTINC1, ACCESS
+0E50  0E50     MOVLW 0x50
+0E52  DFA9     RCALL __pa_0
+226:           	SPI_RW_Reg(WRITE_REG + FEATURE, 0x06);		//SET features for DPL
+0E54  0E06     MOVLW 0x6
+0E56  6EE6     MOVWF POSTINC1, ACCESS
+0E58  0E3D     MOVLW 0x3D
+0E5A  D835     RCALL __pa_21
+227:           	SPI_RW_Reg(WRITE_REG + DYNPD, PIPE_0);		//enable DPL on pipe 0
+0E5C  0E3C     MOVLW 0x3C
+0E5E  D833     RCALL __pa_21
+228:           
+229:           	SPI_RW_Reg(WRITE_REG + EN_AA, 0x01);      // Enable Auto.Ack:Pipe0
+0E60  0E21     MOVLW 0x21
+0E62  D831     RCALL __pa_21
+0EC6  DF6F     RCALL __pa_0
+230:           	SPI_RW_Reg(WRITE_REG + EN_RXADDR, 0x01);  // Enable Pipe0
+0E64  0E22     MOVLW 0x22
+0E66  EFD3     GOTO 0xDA6
+0E68  F006     NOP
+0EC8  0E01     MOVLW 0x1
+0ECA  6EE6     MOVWF POSTINC1, ACCESS
+0ECC  0012     RETURN 0
+231:           	SPI_RW_Reg(WRITE_REG + RF_CH, 40);        // Select RF channel 40
+0CE4  0E28     MOVLW 0x28
+0CE6  6EE6     MOVWF POSTINC1, ACCESS
+0CE8  0E25     MOVLW 0x25
+0CEA  D85D     RCALL __pa_0
+232:           	SPI_RW_Reg(WRITE_REG + RX_PW_P0, TX_PLOAD_WIDTH); // Select same RX payload width as TX Payload width
+0CEC  0E20     MOVLW 0x20
+0CEE  6EE6     MOVWF POSTINC1, ACCESS
+0CF0  0E31     MOVLW 0x31
+0CF2  D8C3     RCALL __pa_13
+0E7A  DF95     RCALL __pa_0
+233:           	SPI_RW_Reg(WRITE_REG + RF_SETUP, 0x07);   // TX_PWR:0dBm, Datarate:1Mbps, LNA:HCURR
+0E7C  0E07     MOVLW 0x7
+0E7E  6EE6     MOVWF POSTINC1, ACCESS
+0E80  0E26     MOVLW 0x26
+0E82  EFD3     GOTO 0xDA6
+0E84  F006     NOP
+234:           
+235:           	SPI_RW_Reg(WRITE_REG + CONFIG, 0x0f);     // Set PWR_UP bit, enable CRC(2 unsigned chars) & Prim:RX. RX_DR enabled..
+0CF4  0E0F     MOVLW 0xF
+0CF6  D8D4     RCALL __pa_16
+0EA0  6EE6     MOVWF POSTINC1, ACCESS
+0EA2  0E20     MOVLW 0x20
+0EA4  DF80     RCALL __pa_0
+236:           	Delay10TCYx(3);
+0E30  0E03     MOVLW 0x3
+0E32  6EE6     MOVWF POSTINC1, ACCESS
+0E34  EC7E     CALL 0x10FC, 0
+0E36  F008     NOP
+0E38  52E5     MOVF POSTDEC1, F, ACCESS
+0EA6  EF18     GOTO 0xE30
+0EA8  F007     NOP
+237:           
+238:           	CE = SET;
+0E3A  8282     BSF PORTC, 1, ACCESS
+0E3C  0012     RETURN 0
+239:           
+240:           	//  This device is now ready to receive one packet of 32 unsigned chars payload from a TX device sending to address
+241:           	//  '3443101001', with auto acknowledgment, retransmit count of 10, RF channel 40 and datarate = 1Mbps.
+242:           
+243:           	SPI_RW_Reg(FLUSH_RX,0);
+0CF8  6AE6     CLRF POSTINC1, ACCESS
+0CFA  0EE2     MOVLW 0xE2
+0CFC  D8C4     RCALL __pa_14
+0E86  DF8F     RCALL __pa_0
+244:           	status=SPI_Read(STATUS);
+0CFE  6EDF     MOVWF INDF2, ACCESS
+0E88  50D8     MOVF STATUS, W, ACCESS
+0E8A  6EE6     MOVWF POSTINC1, ACCESS
+0E8C  DE7D     RCALL SPI_Read
+0E8E  52E5     MOVF POSTDEC1, F, ACCESS
+0E90  0012     RETURN 0
+245:           	SPI_RW_Reg(WRITE_REG + STATUS, status);
+0D00  CFDF     MOVFF INDF2, POSTINC1
+0D02  FFE6     NOP
+0D04  0E20     MOVLW 0x20
+0D06  24D8     ADDWF STATUS, W, ACCESS
+0D08  D84E     RCALL __pa_0
+246:           
+247:           }
+0D0A  52E5     MOVF POSTDEC1, F, ACCESS
+0D0C  D05D     BRA __pa_3
+248:           /**************************************************/
+249:           
+250:           /**************************************************
+251:            * Function: initTX();
+252:            *
+253:            * Description:
+254:            * This function initializes one nRF24L01 device to
+255:            * TX mode, SET TX address, SET RX address for auto.ack,
+256:            * fill TX payload, select RF channel, datarate & TX pwr.
+257:            * PWR_UP is SET, CRC(2 unsigned chars) is enabled, & PRIM:TX.
+258:            *
+259:            * ToDo: One high pulse(>10us) on CE will now send this
+260:            * packet and expext an acknowledgment from the RX device.
+261:            **************************************************/
+262:           void initTX(void)
+0D0E  D857     RCALL __pa_2
+0D10  0E23     MOVLW 0x23
+0D12  26E1     ADDWF FSR1L, F, ACCESS
+263:           {
+264:           	unsigned char tx_buf[TX_PLOAD_WIDTH];
+265:           	unsigned char status=0;
+0D14  0E20     MOVLW 0x20
+0D16  6ADB     CLRF PLUSW2, ACCESS
+266:           	unsigned char key=0;
+0D18  0E21     MOVLW 0x21
+0D1A  6ADB     CLRF PLUSW2, ACCESS
+267:           	unsigned char config_reg;
+268:           
+269:           	CE = CLEAR;
+0D1C  D890     RCALL __pa_11
+270:           
+271:           	SPI_Write_Buf(WRITE_REG + TX_ADDR, TX_ADDRESS, TX_ADR_WIDTH);    // Writes TX_Address to nRF24L01
+0DDC  0E05     MOVLW 0x5
+0DDE  6EE6     MOVWF POSTINC1, ACCESS
+0DE0  0E0A     MOVLW 0xA
+0DE2  6EE6     MOVWF POSTINC1, ACCESS
+0DE4  0E0E     MOVLW 0xE
+0DE6  6EE6     MOVWF POSTINC1, ACCESS
+0DE8  0012     RETURN 0
+272:           	SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, TX_ADDRESS, TX_ADR_WIDTH); // RX_Addr0 same as TX_Adr for Auto.Ack
+273:           
+274:           	SPI_RW_Reg(ACTIVATE,0x73);					//activate feature register
+275:           	SPI_RW_Reg(WRITE_REG + FEATURE, 0x06);		//SET features for DPL
+276:           	SPI_RW_Reg(WRITE_REG + DYNPD, PIPE_0);		//enable DPL on pipe 0
+277:           
+278:           	SPI_RW_Reg(WRITE_REG + EN_AA, 0x01);      // Enable Auto.Ack:Pipe0
+279:           	SPI_RW_Reg(WRITE_REG + EN_RXADDR, 0x01);  // Enable Pipe0
+280:           	SPI_RW_Reg(WRITE_REG + SETUP_RETR, 0x33); // 1000us + 86us, 3 retrans...
+0D1E  0E33     MOVLW 0x33
+0D20  6EE6     MOVWF POSTINC1, ACCESS
+0D22  0E24     MOVLW 0x24
+0D24  D840     RCALL __pa_0
+281:           	SPI_RW_Reg(WRITE_REG + RF_CH, 40);        // Select RF channel 40
+0D26  0E28     MOVLW 0x28
+0D28  6EE6     MOVWF POSTINC1, ACCESS
+0D2A  0E25     MOVLW 0x25
+0D2C  D8A6     RCALL __pa_13
+282:           	SPI_RW_Reg(WRITE_REG + RF_SETUP, 0x07);   // TX_PWR:0dBm, Datarate:1Mbps, LNA:HCURR
+283:           
+284:           	SPI_RW_Reg(FLUSH_TX,0);
+0D2E  6AE6     CLRF POSTINC1, ACCESS
+0D30  0EE1     MOVLW 0xE1
+0D32  D8A9     RCALL __pa_14
+285:           	status=SPI_Read(STATUS);
+0D34  6EE7     MOVWF INDF1, ACCESS
+0D36  0E20     MOVLW 0x20
+0D38  CFE7     MOVFF INDF1, PLUSW2
+0D3A  FFDB     NOP
+286:           	SPI_RW_Reg(WRITE_REG + STATUS, status);
+0D3C  CFDB     MOVFF PLUSW2, POSTINC1
+0D3E  FFE6     NOP
+0D40  24D8     ADDWF STATUS, W, ACCESS
+0D42  D831     RCALL __pa_0
+287:           	SPI_Write_Buf(WR_TX_PLOAD,tx_buf,TX_PLOAD_WIDTH);
+0D44  0E20     MOVLW 0x20
+0D46  6EE6     MOVWF POSTINC1, ACCESS
+0D48  CFD9     MOVFF FSR2L, POSTINC1
+0D4A  FFE6     NOP
+0D4C  CFDA     MOVFF FSR2H, POSTINC1
+0D4E  FFE6     NOP
+0D50  0EA0     MOVLW 0xA0
+0D52  D82E     RCALL __pa_1
+0DB0  6EE6     MOVWF POSTINC1, ACCESS
+0DB2  DF0F     RCALL SPI_Write_Buf
+0DB4  52E5     MOVF POSTDEC1, F, ACCESS
+0DB6  52E5     MOVF POSTDEC1, F, ACCESS
+0DB8  52E5     MOVF POSTDEC1, F, ACCESS
+0DBA  52E5     MOVF POSTDEC1, F, ACCESS
+0DBC  0012     RETURN 0
+288:           
+289:           	SPI_RW_Reg(WRITE_REG + CONFIG, 0x0E);     // Set PWR_UP bit, enable CRC(2 unsigned chars) & Prim:TX. MAX_RT & TX_DS enabled..
+0D54  0E0E     MOVLW 0xE
+0D56  D8A4     RCALL __pa_16
+0DA6  6EE6     MOVWF POSTINC1, ACCESS
+0DA8  DEE7     RCALL SPI_RW_Reg
+0DAA  52E5     MOVF POSTDEC1, F, ACCESS
+0DAC  52E5     MOVF POSTDEC1, F, ACCESS
+0DAE  0012     RETURN 0
+290:           	Delay10TCYx(3);
+291:           
+292:           	CE = SET;
+293:           
+294:           	//LCD_cmd(LINE_1);
+295:           	//LCD_putch('T'); LCD_putch('X'); LCD_putch('.'); LCD_putch('.');
+296:           
+297:           	//--- fill buffer with dummy data ------
+298:               for(key=0;key<32;key++) {
+0D58  0E21     MOVLW 0x21
+0D5A  6ADB     CLRF PLUSW2, ACCESS
+0D5C  0E20     MOVLW 0x20
+0D5E  6EF3     MOVWF PRODL, ACCESS
+0D60  0E21     MOVLW 0x21
+0D62  CFDB     MOVFF PLUSW2, PRODH
+0D64  FFF4     NOP
+0D66  50F3     MOVF PRODL, W, ACCESS
+0D68  5CF4     SUBWF PRODH, W, ACCESS
+0D6A  E216     BC 0xD98
+0D92  0E21     MOVLW 0x21
+0D94  2ADB     INCF PLUSW2, F, ACCESS
+0D96  D7E2     BRA 0xD5C
+299:           		tx_buf[key] = 0xA0+key;
+0D6C  0E21     MOVLW 0x21
+0D6E  50DB     MOVF PLUSW2, W, ACCESS
+0D70  0FA0     ADDLW 0xA0
+0D72  6EE6     MOVWF POSTINC1, ACCESS
+0D74  CFD9     MOVFF FSR2L, __tmp_0
+0D76  F014     NOP
+0D78  CFDA     MOVFF FSR2H, 0x15
+0D7A  F015     NOP
+0D7C  0E21     MOVLW 0x21
+0D7E  50DB     MOVF PLUSW2, W, ACCESS
+0D80  010F     MOVLB 0xF
+0D82  24D9     ADDWF FSR2L, W, ACCESS
+0D84  6EE9     MOVWF FSR0L, ACCESS
+0D86  0E00     MOVLW 0x0
+0D88  20DA     ADDWFC FSR2H, W, ACCESS
+0D8A  6EEA     MOVWF FSR0H, ACCESS
+0D8C  52E5     MOVF POSTDEC1, F, ACCESS
+0D8E  50E7     MOVF INDF1, W, ACCESS
+0D90  6EEF     MOVWF INDF0, ACCESS
+300:           	}
+301:           
+302:           }
+0D98  0E23     MOVLW 0x23
+0D9A  5CE1     SUBWF FSR1L, W, ACCESS
+0D9C  E202     BC 0xDA2
+0D9E  6AE1     CLRF FSR1L, ACCESS
+0DA0  52E5     MOVF POSTDEC1, F, ACCESS
+0DA2  6EE1     MOVWF FSR1L, ACCESS
+0DA4  D011     BRA __pa_3
+0DC8  52E5     MOVF POSTDEC1, F, ACCESS
+0DCA  CFE7     MOVFF INDF1, FSR2L
+0DCC  FFD9     NOP
+0DCE  0012     RETURN 0
+---  /Users/julian/Documents/Programming/tinkering/pic18f25k80.X/ledstripwireless.c  --------------------
+1:             //For the RX target board, the connection is Gray, White, Orange, Blue, and Black, Red, White, Yellow
+2:             
+3:             #include "p18f25k80.h"
+4:             #include "constants.h"
+5:             #include "nRF2401.h"
+6:             #include "adc.h"
+7:             #include <timers.h>
+8:             #include <math.h>
+9:             #include <delays.h>
+10:            
+11:            #define STRIP_DATA_TRIS TRISBbits.TRISB0
+12:            #define STRIP_DATA PORTBbits.RB0
+13:            
+14:            #define STATUS_TRIS TRISCbits.TRISC0
+15:            #define STATUS_LED PORTCbits.RC0
+16:            
+17:            #define BUTTON_TRIS TRISBbits.TRISB1
+18:            #define BUTTON PORTBbits.RB1
+19:            
+20:            #define MODE_SELECT_TRIS TRISBbits.TRISB2
+21:            #define MODE_SELECT PORTBbits.RB2
+22:            #define MODE_SEND 1
+23:            
+24:            #define STRIP_LENGTH 125
+25:            #define DATA_SIZE 375
+26:            
+27:            #pragma idata large_idata
+28:            char led_buffer[375] = {10,0,0,0,10,0,0,0,10,10,10,10,0,0,10,0,10,0,10,0,0,10,10,10,0,10,0,10,0,0,0,0,10,10,10,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+29:            //const char source[375] = {255,255,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+30:            const char source[375] = {0,15,0,0,15,0,1,15,0,2,15,0,3,15,0,3,15,0,4,15,0,5,15,0,6,15,0,6,15,0,7,15,0,8,15,0,9,15,0,9,15,0,10,15,0,11,15,0,12,15,0,13,15,0,13,15,0,14,15,0,15,15,0,15,15,0,15,15,0,15,14,0,15,13,0,15,12,0,15,11,0,15,11,0,15,10,0,15,9,0,15,8,0,15,8,0,15,7,0,15,6,0,15,5,0,15,5,0,15,4,0,15,3,0,15,2,0,15,2,0,15,1,0,15,0,0,15,0,0,15,0,1,15,0,1,15,0,2,15,0,3,15,0,4,15,0,4,15,0,5,15,0,6,15,0,7,15,0,7,15,0,8,15,0,9,15,0,10,15,0,10,15,0,11,15,0,12,15,0,13,15,0,14,15,0,14,15,0,15,15,0,15,14,0,15,14,0,15,13,0,15,12,0,15,11,0,15,10,0,15,10,0,15,9,0,15,8,0,15,7,0,15,7,0,15,6,0,15,5,0,15,4,0,15,4,0,15,3,0,15,2,0,15,1,0,15,1,0,15,0,0,15,0,0,15,0,1,15,0,2,15,0,2,15,0,3,15,0,4,15,0,5,15,0,5,15,0,6,15,0,7,15,0,8,15,0,8,15,0,9,15,0,10,15,0,11,15,0,11,15,0,12,15,0,13,15,0,14,15,0,15,15,0,15,15,0,15,15,0,15,14,0,15,13,0,15,13,0,15,12,0,15,11,0,15,10,0,15,9,0,15,9,0,15,8,0,15,7,0,15,6,0,15,6,0,15,5,0,15,4,0,15,3,0,15,3,0,15,2,0,15,1,0,15,0};
+31:            #pragma idata
+32:            
+33:            unsigned char tx_buf[TX_PLOAD_WIDTH];
+34:            unsigned char rx_buf[TX_PLOAD_WIDTH];
+35:            char runFlag=0;
+36:            int timerCount = 0;
+37:            int value;
+38:            
+39:            void setup(void);
+40:            
+41:            ////                            Sender Code                                 ////
+42:            void senderMain(void);
+43:            void senderInterrupt(void);
+44:            void writeSource(short offset);
+45:            void doCycle(void);
+46:            void doOscillate(void);
+47:            void loadFrame(char frame);
+48:            void sendStrip();
+49:            
+50:            ////                          Receiver Code                                 ////
+51:            void receiverMain(void);
+52:            void receiverInterrupt(void);
+53:            void updateBuffer();
+54:            
+55:            ////                            Shared Code                                 ////
+56:            void clearStrip(char r, char g, char b);
+57:            void setLED(unsigned char n, char r, char g, char b);
+58:            void displayStatus(char status);
+59:            void delay(void);
+60:            
+61:            ////                            System Code                                 ////
+62:            void run(void);
+63:            void main(void);
+64:            void INT_AT_HIGH_VECTOR(void);
+65:            void HIGH_ISR(void);
+66:            
+67:            ////                            LED Code                                    ////
+68:            extern void updateLEDs(void);
+69:            
+70:            void setup(void) {
+71:                //Misc config
+72:                STRIP_DATA_TRIS = OUTPUT;
+0040  9093     BCF TRISB, 0, ACCESS
+73:                STATUS_TRIS = OUTPUT;
+0042  9094     BCF TRISC, 0, ACCESS
+74:                BUTTON_TRIS = INPUT;
+0044  8293     BSF TRISB, 1, ACCESS
+75:                MODE_SELECT_TRIS = INPUT;
+0046  8493     BSF TRISB, 2, ACCESS
+76:                STATUS_LED = 0;
+0048  9082     BCF PORTC, 0, ACCESS
+77:            
+78:                //This is to toggle pins from digital to analog
+79:                //unimp, RD3, RD2, RD1     RD1, AN10, AN9, AN8 (in order)
+80:                ANCON1 = 0b11111000;
+004A  010F     MOVLB 0xF
+004C  0EF8     MOVLW 0xF8
+004E  6F5C     MOVWF 0x5C, BANKED
+81:            
+82:                //NRF port configure (todo: move me)
+83:                TRIS_CE = OUTPUT;
+0050  9294     BCF TRISC, 1, ACCESS
+84:                TRIS_CSN = OUTPUT;
+0052  9494     BCF TRISC, 2, ACCESS
+85:                TRIS_IRQ = INPUT;
+0054  8E94     BSF TRISC, 7, ACCESS
+86:                TRIS_SCK = OUTPUT;
+0056  9694     BCF TRISC, 3, ACCESS
+87:                TRIS_MISO = INPUT;
+0058  8894     BSF TRISC, 4, ACCESS
+88:                TRIS_MOSI = OUTPUT;
+005A  9A94     BCF TRISC, 5, ACCESS
+89:            
+90:                //oscillator setup
+91:                OSCCONbits.IRCF = 0b111; //sets internal osc to 111=16mhz, 110=8mhz
+005C  0E8F     MOVLW 0x8F
+005E  14D3     ANDWF OSCCON, W, ACCESS
+0060  0970     IORLW 0x70
+0062  6ED3     MOVWF OSCCON, ACCESS
+92:                OSCCONbits.SCS = 0b00;
+0064  0EFC     MOVLW 0xFC
+0066  14D3     ANDWF OSCCON, W, ACCESS
+0068  0900     IORLW 0x0
+006A  6ED3     MOVWF OSCCON, ACCESS
+93:                OSCTUNEbits.PLLEN = 0b1; //1=pllx4 enabled
+006C  8C9B     BSF OSCTUNE, 6, ACCESS
+94:            
+95:                //set up timer for LEDs
+96:                T2CONbits.TMR2ON = 1; //enable timer 2
+006E  84CA     BSF T2CON, 2, ACCESS
+97:                T2CONbits.T2CKPS = 0b00; //prescaler 0b10=1/16
+0070  0EFC     MOVLW 0xFC
+0072  14CA     ANDWF T2CON, W, ACCESS
+0074  0900     IORLW 0x0
+0076  6ECA     MOVWF T2CON, ACCESS
+98:                PIE1bits.TMR2IE = 0;
+0078  929D     BCF PIE1, 1, ACCESS
+99:                PR2 = 20;
+007A  0E14     MOVLW 0x14
+007C  6ECB     MOVWF PR2, ACCESS
+100:           
+101:               //set up timer for interrupt
+102:               T0CONbits.TMR0ON = 1; //enable timer 0
+007E  8ED5     BSF T0CON, 7, ACCESS
+103:               T0CONbits.T0CS = 0; //select clock (0=internal,1=t0pin)
+0080  9AD5     BCF T0CON, 5, ACCESS
+104:               T0CONbits.PSA = 1; //disable's prescaler (1=disable, 0=enable)
+0082  86D5     BSF T0CON, 3, ACCESS
+105:               T0CONbits.T08BIT = 0; //set mode (1=8bit mode, 0=16bit mode)
+0084  9CD5     BCF T0CON, 6, ACCESS
+106:               T0CONbits.T0SE = 1; //edge select (1=falling edge, 0=rising edge)
+0086  88D5     BSF T0CON, 4, ACCESS
+107:               T0CONbits.T0PS = 0b000; //configure prescaler 000=1:2
+0088  0EF8     MOVLW 0xF8
+008A  14D5     ANDWF T0CON, W, ACCESS
+008C  0900     IORLW 0x0
+008E  6ED5     MOVWF T0CON, ACCESS
+108:           
+109:               //Set up timer0 interrupts
+110:               INTCONbits.TMR0IE = 1;
+0090  8AF2     BSF INTCON, 5, ACCESS
+111:               INTCONbits.TMR0IF = 0;
+0092  94F2     BCF INTCON, 2, ACCESS
+112:               INTCONbits.PEIE = 1;
+0094  8CF2     BSF INTCON, 6, ACCESS
+113:               INTCONbits.GIE = 1;
+0096  8EF2     BSF INTCON, 7, ACCESS
+114:           }
+0098  0012     RETURN 0
+115:           
+116:           ////////////////////////////////////////////////////////////////////////////////
+117:           ////                                                                        ////
+118:           ////                            Sender Code                                 ////
+119:           ////                                                                        ////
+120:           ////////////////////////////////////////////////////////////////////////////////
+121:           
+122:           void senderMain() {
+009A  DB26     RCALL __pa_2
+009C  0E08     MOVLW 0x8
+009E  26E1     ADDWF FSR1L, F, ACCESS
+123:               int fixweirdbehavior;
+124:               unsigned char status;
+125:               short i;
+126:               char mode;
+127:               short offset;
+128:           
+129:               OpenADC(ADC_FOSC_64 & ADC_RIGHT_JUST & ADC_20_TAD, ADC_CH0 & ADC_INT_OFF, 0b0000);
+00A0  6AE6     CLRF POSTINC1, ACCESS
+00A2  0E03     MOVLW 0x3
+00A4  6EE6     MOVWF POSTINC1, ACCESS
+00A6  0EEF     MOVLW 0xEF
+00A8  6EE6     MOVWF POSTINC1, ACCESS
+00AA  ECB6     CALL 0xF6C, 0
+00AC  F007     NOP
+00AE  52E5     MOVF POSTDEC1, F, ACCESS
+00B0  52E5     MOVF POSTDEC1, F, ACCESS
+00B2  52E5     MOVF POSTDEC1, F, ACCESS
+130:           
+131:               nrf_init();
+00B4  EC07     CALL 0xC0E, 0
+00B6  F006     NOP
+132:               delay();
+00B8  DA67     RCALL delay
+133:           
+134:               initTX();
+00BA  EC87     CALL 0xD0E, 0
+00BC  F006     NOP
+135:               delay();
+00BE  DA64     RCALL delay
+136:           
+137:               mode = 0;
+00C0  0E05     MOVLW 0x5
+00C2  6ADB     CLRF PLUSW2, ACCESS
+138:               while(1) {
+015C  D7B3     BRA 0xC4
+139:                   if (BUTTON) {
+00C4  A281     BTFSS PORTB, 1, ACCESS
+00C6  D00D     BRA 0xE2
+140:                       mode = !mode;
+00C8  0E05     MOVLW 0x5
+00CA  50DB     MOVF PLUSW2, W, ACCESS
+00CC  E002     BZ 0xD2
+00CE  0E00     MOVLW 0x0
+00D0  D001     BRA 0xD4
+00D2  0E01     MOVLW 0x1
+00D4  6EE7     MOVWF INDF1, ACCESS
+00D6  0E05     MOVLW 0x5
+00D8  CFE7     MOVFF INDF1, PLUSW2
+00DA  FFDB     NOP
+141:                       while(BUTTON);
+00DC  B281     BTFSC PORTB, 1, ACCESS
+00DE  D7FE     BRA 0xDC
+142:                       delay();
+00E0  DA53     RCALL delay
+143:                   }
+144:           
+145:                   value = readPotentiometer();
+00E2  D8DF     RCALL readPotentiometer
+00E4  CFF3     MOVFF PRODL, value
+00E6  F0A0     NOP
+00E8  CFF4     MOVFF PRODH, 0xA1
+00EA  F0A1     NOP
+146:                   value = value >> 4;
+00EC  CFF3     MOVFF PRODL, __tmp_0
+00EE  F014     NOP
+00F0  CFF4     MOVFF PRODH, 0x15
+00F2  F015     NOP
+00F4  0E04     MOVLW 0x4
+00F6  90D8     BCF STATUS, 0, ACCESS
+00F8  3215     RRCF 0x15, F, ACCESS
+00FA  3214     RRCF __tmp_0, F, ACCESS
+00FC  04E8     DECF WREG, W, ACCESS
+00FE  E1FB     BNZ 0xF6
+0100  C014     MOVFF __tmp_0, value
+0102  F0A0     NOP
+0104  C015     MOVFF 0x15, 0xA1
+0106  F0A1     NOP
+147:                   value = value >> 1;
+0108  0100     MOVLB 0x0
+010A  90D8     BCF STATUS, 0, ACCESS
+010C  33A1     RRCF 0xA1, F, BANKED
+010E  33A0     RRCF value, F, BANKED
+148:                   if (value > 124) value = 124;
+0110  35A1     RLCF 0xA1, W, BANKED
+0112  E208     BC 0x124
+0114  51A0     MOVF value, W, BANKED
+0116  087C     SUBLW 0x7C
+0118  0E00     MOVLW 0x0
+011A  55A1     SUBFWB 0xA1, W, BANKED
+011C  E203     BC 0x124
+011E  0E7C     MOVLW 0x7C
+0120  6FA0     MOVWF value, BANKED
+0122  6BA1     CLRF 0xA1, BANKED
+149:           
+150:                   if (mode) {
+0124  0E05     MOVLW 0x5
+0126  50DB     MOVF PLUSW2, W, ACCESS
+0128  E011     BZ 0x14C
+151:                       clearStrip(0,0,0);
+012A  6AE6     CLRF POSTINC1, ACCESS
+012C  6AE6     CLRF POSTINC1, ACCESS
+012E  6AE6     CLRF POSTINC1, ACCESS
+0130  D9A5     RCALL clearStrip
+0132  52E5     MOVF POSTDEC1, F, ACCESS
+0134  52E5     MOVF POSTDEC1, F, ACCESS
+0136  52E5     MOVF POSTDEC1, F, ACCESS
+152:                       setLED(value,10,10,10);
+0138  0E0A     MOVLW 0xA
+013A  6EE6     MOVWF POSTINC1, ACCESS
+013C  6EE6     MOVWF POSTINC1, ACCESS
+013E  6EE6     MOVWF POSTINC1, ACCESS
+0140  C0A0     MOVFF value, POSTINC1
+0142  FFE6     NOP
+0144  D9BF     RCALL setLED
+0146  52E5     MOVF POSTDEC1, F, ACCESS
+0148  52E5     MOVF POSTDEC1, F, ACCESS
+153:                   } else {
+014A  D005     BRA 0x156
+154:                       writeSource(value);
+014C  C0A0     MOVFF value, POSTINC1
+014E  FFE6     NOP
+0150  C0A1     MOVFF 0xA1, POSTINC1
+0152  FFE6     NOP
+0154  D825     RCALL writeSource
+0156  52E5     MOVF POSTDEC1, F, ACCESS
+0158  52E5     MOVF POSTDEC1, F, ACCESS
+155:                   }
+156:                   
+157:                   sendStrip();
+015A  D8F1     RCALL sendStrip
+158:               }
+159:           
+160:               //CloseADC();
+161:           }
+162:           
+163:           void updateSenderLCD() {
+164:               setupLCD();
+015E  ECE4     CALL 0x7C8, 0
+0160  F003     NOP
+165:               clear();
+0162  EC15     CALL 0x82A, 0
+0164  F004     NOP
+166:               sendIntDec(value);
+0166  C0A0     MOVFF value, POSTINC1
+0168  FFE6     NOP
+016A  C0A1     MOVFF 0xA1, POSTINC1
+016C  FFE6     NOP
+016E  EC15     CALL 0xA2A, 0
+0170  F005     NOP
+0172  52E5     MOVF POSTDEC1, F, ACCESS
+0174  52E5     MOVF POSTDEC1, F, ACCESS
+167:           }
+0176  0012     RETURN 0
+168:           
+169:           void senderInterrupt(void) {
+170:               if (timerCount++ > 100) {
+0178  010E     MOVLB 0xE
+017A  CE10     MOVFF timerCount, __tmp_0
+017C  F014     NOP
+017E  CE11     MOVFF 0xE11, 0x15
+0180  F015     NOP
+0182  2B10     INCF 0x10, F, BANKED
+0184  0E00     MOVLW 0x0
+0186  2311     ADDWFC 0x11, F, BANKED
+0188  3415     RLCF 0x15, W, ACCESS
+018A  E209     BC 0x19E
+018C  5014     MOVF __tmp_0, W, ACCESS
+018E  0864     SUBLW 0x64
+0190  0E00     MOVLW 0x0
+0192  5415     SUBFWB 0x15, W, ACCESS
+0194  E204     BC 0x19E
+171:                   updateSenderLCD();
+0196  DFE3     RCALL updateSenderLCD
+172:                   timerCount = 0;
+0198  010E     MOVLB 0xE
+019A  6B10     CLRF 0x10, BANKED
+019C  6B11     CLRF 0x11, BANKED
+173:               }
+174:           }
+019E  0012     RETURN 0
+175:           
+176:           void writeSource(short offset) {
+01A0  DB02     RCALL __pa_19
+177:               short i,i_source;
+178:           
+179:               i_source = offset;
+01A2  0EFD     MOVLW 0xFD
+01A4  CFDB     MOVFF PLUSW2, 0x8
+01A6  F008     NOP
+01A8  0EFE     MOVLW 0xFE
+01AA  CFDB     MOVFF PLUSW2, 0x9
+01AC  F009     NOP
+01AE  0E02     MOVLW 0x2
+01B0  C008     MOVFF 0x8, PLUSW2
+01B2  FFDB     NOP
+01B4  0E03     MOVLW 0x3
+01B6  C009     MOVFF 0x9, PLUSW2
+01B8  FFDB     NOP
+180:               for (i=0; i<STRIP_LENGTH; i++) {
+01BA  6ADE     CLRF POSTINC2, ACCESS
+01BC  6ADD     CLRF POSTDEC2, ACCESS
+01BE  DAA4     RCALL __pa_5
+01C0  E601     BN 0x1C4
+01C2  DAC8     RCALL __pa_12
+01C4  E225     BC 0x210
+0206  2ADF     INCF INDF2, F, ACCESS
+0208  0E01     MOVLW 0x1
+020A  E3D9     BNC 0x1BE
+020C  2ADB     INCF PLUSW2, F, ACCESS
+020E  D7D7     BRA 0x1BE
+181:                   led_buffer[i*3] = source[i_source*3];
+01C6  DA8E     RCALL __pa_1
+01C8  DA84     RCALL __pa_0
+01CA  DA93     RCALL __pa_3
+182:                   led_buffer[i*3+1] = source[i_source*3+1];
+01CC  DA8B     RCALL __pa_1
+01CE  0E01     MOVLW 0x1
+01D0  DAAA     RCALL __pa_8
+01D2  DA7F     RCALL __pa_0
+01D4  0E01     MOVLW 0x1
+01D6  DAA7     RCALL __pa_8
+01D8  DA8C     RCALL __pa_3
+183:                   led_buffer[i*3+2] = source[i_source*3+2];
+01DA  DA84     RCALL __pa_1
+01DC  0E02     MOVLW 0x2
+01DE  DAA3     RCALL __pa_8
+01E0  DA78     RCALL __pa_0
+01E2  0E02     MOVLW 0x2
+01E4  DAA0     RCALL __pa_8
+01E6  DA85     RCALL __pa_3
+06D2  0E77     MOVLW 0x77
+06D4  26E9     ADDWF FSR0L, F, ACCESS
+06D6  0E02     MOVLW 0x2
+06D8  22EA     ADDWFC FSR0H, F, ACCESS
+06DA  50EF     MOVF INDF0, W, ACCESS
+06DC  6EE6     MOVWF POSTINC1, ACCESS
+06DE  D857     RCALL __pa_17
+06E0  0E03     MOVLW 0x3
+06E2  D04C     BRA __pa_16
+06E4  D859     RCALL __pa_18
+06E6  D04A     BRA __pa_16
+06F2  D83F     RCALL __pa_15
+06F4  52E5     MOVF POSTDEC1, F, ACCESS
+06F6  50E7     MOVF INDF1, W, ACCESS
+06F8  6EEF     MOVWF INDF0, ACCESS
+06FA  0012     RETURN 0
+0772  0E00     MOVLW 0x0
+0774  26E9     ADDWF FSR0L, F, ACCESS
+0776  0E01     MOVLW 0x1
+0778  22EA     ADDWFC FSR0H, F, ACCESS
+077A  0012     RETURN 0
+077C  02EA     MULWF FSR0H, ACCESS
+077E  CFF3     MOVFF PRODL, FSR0H
+0780  FFEA     NOP
+0782  02E9     MULWF FSR0L, ACCESS
+0784  CFF3     MOVFF PRODL, FSR0L
+0786  FFE9     NOP
+0788  50F4     MOVF PRODH, W, ACCESS
+078A  26EA     ADDWF FSR0H, F, ACCESS
+078C  0012     RETURN 0
+184:           
+185:                   i_source++;
+01E8  0E02     MOVLW 0x2
+01EA  2ADB     INCF PLUSW2, F, ACCESS
+01EC  0E03     MOVLW 0x3
+01EE  E301     BNC 0x1F2
+01F0  2ADB     INCF PLUSW2, F, ACCESS
+186:                   if (i_source >= STRIP_LENGTH) i_source = 0;
+01F2  DAA5     RCALL __pa_10
+01F4  90D8     BCF STATUS, 0, ACCESS
+01F6  5015     MOVF 0x15, W, ACCESS
+01F8  E601     BN 0x1FC
+01FA  DAAC     RCALL __pa_12
+01FC  E304     BNC 0x206
+01FE  0E02     MOVLW 0x2
+0200  6ADB     CLRF PLUSW2, ACCESS
+0202  0E03     MOVLW 0x3
+0204  6ADB     CLRF PLUSW2, ACCESS
+073E  0E02     MOVLW 0x2
+0740  CFDB     MOVFF PLUSW2, __tmp_0
+0742  F014     NOP
+0744  0E03     MOVLW 0x3
+0746  CFDB     MOVFF PLUSW2, 0x15
+0748  F015     NOP
+074A  0012     RETURN 0
+187:               }
+188:           }
+0210  0E04     MOVLW 0x4
+0212  5CE1     SUBWF FSR1L, W, ACCESS
+0214  E202     BC 0x21A
+0216  6AE1     CLRF FSR1L, ACCESS
+0218  52E5     MOVF POSTDEC1, F, ACCESS
+021A  D27A     BRA __pa_6
+189:           
+190:           void doCycle(void) {
+021C  DAC8     RCALL __pa_20
+191:               short offset;
+192:           
+193:               offset = 0;
+021E  6ADE     CLRF POSTINC2, ACCESS
+0220  6ADD     CLRF POSTDEC2, ACCESS
+194:               while(1) {
+0238  D7F2     BRA 0x21E
+195:                   writeSource(offset);
+0222  DA78     RCALL __pa_7
+0714  CFDE     MOVFF POSTINC2, POSTINC1
+0716  FFE6     NOP
+0718  CFDD     MOVFF POSTDEC2, POSTINC1
+071A  FFE6     NOP
+071C  DD41     RCALL writeSource
+071E  52E5     MOVF POSTDEC1, F, ACCESS
+0720  52E5     MOVF POSTDEC1, F, ACCESS
+196:                   updateLEDs();
+0722  EF1F     GOTO 0x63E
+0724  F003     NOP
+197:                   Delay10KTCYx(50);
+0224  0E32     MOVLW 0x32
+0226  DA9B     RCALL __pa_13
+198:                   offset++;
+0228  2ADF     INCF INDF2, F, ACCESS
+022A  0E01     MOVLW 0x1
+022C  E301     BNC 0x230
+022E  2ADB     INCF PLUSW2, F, ACCESS
+199:                   if (offset >= STRIP_LENGTH) offset = 0;
+0230  DA6B     RCALL __pa_5
+0232  E601     BN 0x236
+0234  DA8F     RCALL __pa_12
+0236  E3F5     BNC 0x222
+0754  0E7D     MOVLW 0x7D
+0756  5C14     SUBWF __tmp_0, W, ACCESS
+0758  0E00     MOVLW 0x0
+075A  5815     SUBWFB 0x15, W, ACCESS
+075C  0012     RETURN 0
+200:               }
+201:           }
+202:           
+203:           void doOscillate(void) {
+023A  DA56     RCALL __pa_2
+023C  0E03     MOVLW 0x3
+023E  26E1     ADDWF FSR1L, F, ACCESS
+204:               short offset;
+205:               char dir = 1;
+0240  0E01     MOVLW 0x1
+0242  6EF3     MOVWF PRODL, ACCESS
+0244  0E02     MOVLW 0x2
+0246  CFF3     MOVFF PRODL, PLUSW2
+0248  FFDB     NOP
+206:           
+207:               offset = 0;
+024A  6ADE     CLRF POSTINC2, ACCESS
+024C  6ADD     CLRF POSTDEC2, ACCESS
+208:               while(1) {
+02A0  D7D6     BRA 0x24E
+209:                   writeSource(offset);
+024E  DA62     RCALL __pa_7
+210:                   updateLEDs();
+211:                   offset+= dir;
+0250  0E02     MOVLW 0x2
+0252  CFDB     MOVFF PLUSW2, __tmp_0
+0254  F014     NOP
+0256  6A15     CLRF 0x15, ACCESS
+0258  BE14     BTFSC __tmp_0, 7, ACCESS
+025A  6815     SETF 0x15, ACCESS
+025C  CFD9     MOVFF FSR2L, FSR0L
+025E  FFE9     NOP
+0260  CFDA     MOVFF FSR2H, FSR0H
+0262  FFEA     NOP
+0264  5014     MOVF __tmp_0, W, ACCESS
+0266  26EE     ADDWF POSTINC0, F, ACCESS
+0268  5015     MOVF 0x15, W, ACCESS
+026A  22ED     ADDWFC POSTDEC0, F, ACCESS
+212:                   if (offset > STRIP_LENGTH) {
+026C  DAA4     RCALL __pa_21
+026E  3415     RLCF 0x15, W, ACCESS
+0270  E20B     BC 0x288
+0272  5014     MOVF __tmp_0, W, ACCESS
+0274  087D     SUBLW 0x7D
+0276  0E00     MOVLW 0x0
+0278  5415     SUBFWB 0x15, W, ACCESS
+027A  E206     BC 0x288
+213:                       offset = STRIP_LENGTH;
+027C  0E7D     MOVLW 0x7D
+027E  6EDE     MOVWF POSTINC2, ACCESS
+0280  6ADD     CLRF POSTDEC2, ACCESS
+214:                       dir = -1;
+0282  0E02     MOVLW 0x2
+0284  68DB     SETF PLUSW2, ACCESS
+215:                   } else if (offset < 0) {
+0286  D7E3     BRA 0x24E
+0288  DA96     RCALL __pa_21
+028A  0100     MOVLB 0x0
+028C  0E80     MOVLW 0x80
+028E  1415     ANDWF 0x15, W, ACCESS
+0290  E0DE     BZ 0x24E
+216:                       offset = 0;
+0292  6ADE     CLRF POSTINC2, ACCESS
+0294  6ADD     CLRF POSTDEC2, ACCESS
+217:                       dir = 1;
+0296  0E01     MOVLW 0x1
+0298  6EF3     MOVWF PRODL, ACCESS
+029A  0E02     MOVLW 0x2
+029C  CFF3     MOVFF PRODL, PLUSW2
+029E  FFDB     NOP
+218:                   }
+219:               }
+220:           }
+221:           
+222:           int readPotentiometer() {
+223:               ConvertADC();
+02A2  EC97     CALL 0x112E, 0
+02A4  F008     NOP
+224:               while( BusyADC() );
+02A6  EC92     CALL 0x1124, 0
+02A8  F008     NOP
+02AA  0900     IORLW 0x0
+02AC  E1FC     BNZ 0x2A6
+225:           
+226:               return ReadADC(); // (0,4096)
+02AE  EF89     GOTO 0x1112
+02B0  F008     NOP
+227:           }
+228:           
+229:           void loadFrame(char frame) {
+02B2  DA79     RCALL __pa_19
+230:               short i;
+231:               int n;
+232:               tx_buf[0] = frame;
+02B4  0EFE     MOVLW 0xFE
+02B6  CFDB     MOVFF PLUSW2, tx_buf
+02B8  F060     NOP
+233:               tx_buf[1] = 0;
+02BA  0100     MOVLB 0x0
+02BC  6B61     CLRF 0x61, BANKED
+234:               tx_buf[2] = 0;
+02BE  6B62     CLRF 0x62, BANKED
+235:               tx_buf[3] = 0;
+02C0  6B63     CLRF 0x63, BANKED
+236:               tx_buf[4] = 0;
+02C2  6B64     CLRF 0x64, BANKED
+237:               for (i=0; i<27; i++) {
+02C4  6ADE     CLRF POSTINC2, ACCESS
+02C6  6ADD     CLRF POSTDEC2, ACCESS
+02C8  DA1F     RCALL __pa_5
+02CA  E604     BN 0x2D4
+02CC  0E1B     MOVLW 0x1B
+02CE  5C14     SUBWF __tmp_0, W, ACCESS
+02D0  0E00     MOVLW 0x0
+02D2  5815     SUBWFB 0x15, W, ACCESS
+02D4  E22E     BC 0x332
+0328  2ADF     INCF INDF2, F, ACCESS
+032A  0E01     MOVLW 0x1
+032C  E3CD     BNC 0x2C8
+032E  2ADB     INCF PLUSW2, F, ACCESS
+0330  D7CB     BRA 0x2C8
+238:                   n = ((int)frame)*27+i;
+02D6  0EFE     MOVLW 0xFE
+02D8  CFDB     MOVFF PLUSW2, 0x16
+02DA  F016     NOP
+02DC  6A17     CLRF 0x17, ACCESS
+02DE  BE16     BTFSC 0x16, 7, ACCESS
+02E0  6817     SETF 0x17, ACCESS
+02E2  DA25     RCALL __pa_9
+02E4  50DE     MOVF POSTINC2, W, ACCESS
+02E6  24F3     ADDWF PRODL, W, ACCESS
+02E8  6E14     MOVWF __tmp_0, ACCESS
+02EA  50DD     MOVF POSTDEC2, W, ACCESS
+02EC  2017     ADDWFC 0x17, W, ACCESS
+02EE  6E15     MOVWF 0x15, ACCESS
+02F0  0E02     MOVLW 0x2
+02F2  C014     MOVFF __tmp_0, PLUSW2
+02F4  FFDB     NOP
+02F6  0E03     MOVLW 0x3
+02F8  C015     MOVFF 0x15, PLUSW2
+02FA  FFDB     NOP
+072E  0E1B     MOVLW 0x1B
+0730  0217     MULWF 0x17, ACCESS
+0732  CFF3     MOVFF PRODL, 0x17
+0734  F017     NOP
+0736  0216     MULWF 0x16, ACCESS
+0738  50F4     MOVF PRODH, W, ACCESS
+073A  2617     ADDWF 0x17, F, ACCESS
+073C  0012     RETURN 0
+239:                   if (n > STRIP_LENGTH * 3) continue;
+02FC  DA20     RCALL __pa_10
+02FE  3415     RLCF 0x15, W, ACCESS
+0300  E205     BC 0x30C
+0302  5014     MOVF __tmp_0, W, ACCESS
+0304  0877     SUBLW 0x77
+0306  0E00     MOVLW 0x0
+0308  5415     SUBFWB 0x15, W, ACCESS
+030A  E30E     BNC 0x328
+240:                   
+241:                   tx_buf[5+i] = led_buffer[n];
+030C  DA45     RCALL __pa_18
+030E  DA31     RCALL __pa_15
+0310  50EF     MOVF INDF0, W, ACCESS
+0312  6EE6     MOVWF POSTINC1, ACCESS
+0314  DA3C     RCALL __pa_17
+0316  0E05     MOVLW 0x5
+0318  DA06     RCALL __pa_8
+031A  0E60     MOVLW 0x60
+031C  26E9     ADDWF FSR0L, F, ACCESS
+031E  0E00     MOVLW 0x0
+0320  22EA     ADDWFC FSR0H, F, ACCESS
+0322  52E5     MOVF POSTDEC1, F, ACCESS
+0324  50E7     MOVF INDF1, W, ACCESS
+0326  6EEF     MOVWF INDF0, ACCESS
+0798  0E02     MOVLW 0x2
+079A  CFDB     MOVFF PLUSW2, FSR0L
+079C  FFE9     NOP
+079E  0E03     MOVLW 0x3
+07A0  CFDB     MOVFF PLUSW2, FSR0H
+07A2  FFEA     NOP
+07A4  0012     RETURN 0
+242:               }
+243:           }
+0332  0E04     MOVLW 0x4
+0334  5CE1     SUBWF FSR1L, W, ACCESS
+0336  E202     BC 0x33C
+0338  6AE1     CLRF FSR1L, ACCESS
+033A  52E5     MOVF POSTDEC1, F, ACCESS
+033C  D1E9     BRA __pa_6
+244:           
+245:           void sendStrip() {
+033E  DA37     RCALL __pa_20
+246:               short i;
+247:               for (i=0; i<14; i++) {
+0340  6ADE     CLRF POSTINC2, ACCESS
+0342  6ADD     CLRF POSTDEC2, ACCESS
+0344  D9E1     RCALL __pa_5
+0346  E604     BN 0x350
+0348  0E0E     MOVLW 0xE
+034A  5C14     SUBWF __tmp_0, W, ACCESS
+034C  0E00     MOVLW 0x0
+034E  5815     SUBWFB 0x15, W, ACCESS
+0350  E21B     BC 0x388
+037E  2ADF     INCF INDF2, F, ACCESS
+0380  0E01     MOVLW 0x1
+0382  E3E0     BNC 0x344
+0384  2ADB     INCF PLUSW2, F, ACCESS
+0386  D7DE     BRA 0x344
+0708  D856     RCALL __pa_21
+070A  90D8     BCF STATUS, 0, ACCESS
+070C  5015     MOVF 0x15, W, ACCESS
+070E  0012     RETURN 0
+07B6  CFDE     MOVFF POSTINC2, __tmp_0
+07B8  F014     NOP
+07BA  CFDD     MOVFF POSTDEC2, 0x15
+07BC  F015     NOP
+07BE  0012     RETURN 0
+248:                   loadFrame(i);
+0352  CFDF     MOVFF INDF2, POSTINC1
+0354  FFE6     NOP
+0356  DFAD     RCALL loadFrame
+0358  52E5     MOVF POSTDEC1, F, ACCESS
+249:                   STATUS_LED = nrf_Send(&tx_buf, &rx_buf);
+035A  0E80     MOVLW 0x80
+035C  6EE6     MOVWF POSTINC1, ACCESS
+035E  0E00     MOVLW 0x0
+0360  6EE6     MOVWF POSTINC1, ACCESS
+0362  0E60     MOVLW 0x60
+0364  6EE6     MOVWF POSTINC1, ACCESS
+0366  0E00     MOVLW 0x0
+0368  6EE6     MOVWF POSTINC1, ACCESS
+036A  EC10     CALL 0xC20, 0
+036C  F006     NOP
+036E  52E5     MOVF POSTDEC1, F, ACCESS
+0370  52E5     MOVF POSTDEC1, F, ACCESS
+0372  52E5     MOVF POSTDEC1, F, ACCESS
+0374  52E5     MOVF POSTDEC1, F, ACCESS
+0376  B0E8     BTFSC WREG, 0, ACCESS
+0378  8082     BSF PORTC, 0, ACCESS
+037A  A0E8     BTFSS WREG, 0, ACCESS
+037C  9082     BCF PORTC, 0, ACCESS
+250:               }
+251:           }
+0388  0E02     MOVLW 0x2
+038A  5CE1     SUBWF FSR1L, W, ACCESS
+038C  E202     BC 0x392
+038E  6AE1     CLRF FSR1L, ACCESS
+0390  52E5     MOVF POSTDEC1, F, ACCESS
+0392  D1BE     BRA __pa_6
+252:           
+253:           ////////////////////////////////////////////////////////////////////////////////
+254:           ////                                                                        ////
+255:           ////                            Receiver Code                               ////
+256:           ////                                                                        ////
+257:           ////////////////////////////////////////////////////////////////////////////////
+258:           
+259:           void receiverMain() {
+0394  DA08     RCALL __pa_19
+07A6  DFA0     RCALL __pa_2
+07A8  0E04     MOVLW 0x4
+07AA  26E1     ADDWF FSR1L, F, ACCESS
+07AC  0012     RETURN 0
+260:               int i;
+261:               char offset;
+262:               char status;
+263:           
+264:               //doCycle();
+265:               //doOscillate();
+266:           
+267:               nrf_init();
+0396  EC07     CALL 0xC0E, 0
+0398  F006     NOP
+268:               delay();
+039A  D8F6     RCALL delay
+269:           
+270:               initRX();
+039C  EC70     CALL 0xCE0, 0
+039E  F006     NOP
+271:               delay();
+03A0  D8F3     RCALL delay
+272:           
+273:               Delay10KTCYx(100);
+03A2  0E64     MOVLW 0x64
+03A4  D9DC     RCALL __pa_13
+274:           
+275:               offset = 0;
+03A6  0E02     MOVLW 0x2
+03A8  6ADB     CLRF PLUSW2, ACCESS
+276:               while(1) {
+03C6  D7F1     BRA 0x3AA
+277:                   STATUS_LED = nrf_Recieve(&rx_buf);
+03AA  0E80     MOVLW 0x80
+03AC  6EE6     MOVWF POSTINC1, ACCESS
+03AE  0E00     MOVLW 0x0
+03B0  6EE6     MOVWF POSTINC1, ACCESS
+03B2  EC37     CALL 0xC6E, 0
+03B4  F006     NOP
+03B6  52E5     MOVF POSTDEC1, F, ACCESS
+03B8  52E5     MOVF POSTDEC1, F, ACCESS
+03BA  B0E8     BTFSC WREG, 0, ACCESS
+03BC  8082     BSF PORTC, 0, ACCESS
+03BE  A0E8     BTFSS WREG, 0, ACCESS
+03C0  9082     BCF PORTC, 0, ACCESS
+278:           
+279:                   updateBuffer();
+03C2  D803     RCALL updateBuffer
+280:                   updateLEDs();
+03C4  D93C     RCALL updateLEDs
+281:               }
+282:           }
+283:           
+284:           void receiverInterrupt() {
+285:           //    if (timerCount++ > 100) {
+286:           //        STATUS_LED = !STATUS_LED;
+287:           //        timerCount = 0;
+288:           //    }
+289:           }
+03C8  0012     RETURN 0
+290:           
+291:           void updateBuffer() {
+03CA  D98E     RCALL __pa_2
+03CC  0E05     MOVLW 0x5
+03CE  26E1     ADDWF FSR1L, F, ACCESS
+292:               char loc = rx_buf[0];
+03D0  C080     MOVFF rx_buf, INDF2
+03D2  FFDF     NOP
+293:               short i;
+294:               int n;
+295:           
+296:               //0,1,2,3,4 = (status info)
+297:               //0 = multiplier
+298:               //5-29 = data
+299:               for (i = 0; i<27; i++) {
+03D4  0E01     MOVLW 0x1
+03D6  6ADB     CLRF PLUSW2, ACCESS
+03D8  0E02     MOVLW 0x2
+03DA  6ADB     CLRF PLUSW2, ACCESS
+03DC  0E01     MOVLW 0x1
+03DE  CFDB     MOVFF PLUSW2, __tmp_0
+03E0  F014     NOP
+03E2  0E02     MOVLW 0x2
+03E4  CFDB     MOVFF PLUSW2, 0x15
+03E6  F015     NOP
+03E8  90D8     BCF STATUS, 0, ACCESS
+03EA  5015     MOVF 0x15, W, ACCESS
+03EC  E604     BN 0x3F6
+03EE  0E1B     MOVLW 0x1B
+03F0  5C14     SUBWF __tmp_0, W, ACCESS
+03F2  0E00     MOVLW 0x0
+03F4  5815     SUBWFB 0x15, W, ACCESS
+03F6  E23C     BC 0x470
+0464  0E01     MOVLW 0x1
+0466  2ADB     INCF PLUSW2, F, ACCESS
+0468  0E02     MOVLW 0x2
+046A  E3B8     BNC 0x3DC
+046C  2ADB     INCF PLUSW2, F, ACCESS
+046E  D7B6     BRA 0x3DC
+300:                   n = ((int)loc)*27+i;
+03F8  CFDF     MOVFF INDF2, 0x16
+03FA  F016     NOP
+03FC  6A17     CLRF 0x17, ACCESS
+03FE  BE16     BTFSC 0x16, 7, ACCESS
+0400  6817     SETF 0x17, ACCESS
+0402  D995     RCALL __pa_9
+0404  0E01     MOVLW 0x1
+0406  50DB     MOVF PLUSW2, W, ACCESS
+0408  24F3     ADDWF PRODL, W, ACCESS
+040A  6E14     MOVWF __tmp_0, ACCESS
+040C  0E02     MOVLW 0x2
+040E  50DB     MOVF PLUSW2, W, ACCESS
+0410  2017     ADDWFC 0x17, W, ACCESS
+0412  6E15     MOVWF 0x15, ACCESS
+0414  0E03     MOVLW 0x3
+0416  C014     MOVFF __tmp_0, PLUSW2
+0418  FFDB     NOP
+041A  0E04     MOVLW 0x4
+041C  C015     MOVFF 0x15, PLUSW2
+041E  FFDB     NOP
+301:                   if (n > STRIP_LENGTH * 3) continue;
+0420  0E03     MOVLW 0x3
+0422  CFDB     MOVFF PLUSW2, __tmp_0
+0424  F014     NOP
+0426  0E04     MOVLW 0x4
+0428  CFDB     MOVFF PLUSW2, 0x15
+042A  F015     NOP
+042C  3415     RLCF 0x15, W, ACCESS
+042E  E205     BC 0x43A
+0430  5014     MOVF __tmp_0, W, ACCESS
+0432  0877     SUBLW 0x77
+0434  0E00     MOVLW 0x0
+0436  5415     SUBFWB 0x15, W, ACCESS
+0438  E315     BNC 0x464
+302:                   
+303:                   led_buffer[n] = rx_buf[5+i];
+043A  0E01     MOVLW 0x1
+043C  CFDB     MOVFF PLUSW2, FSR0L
+043E  FFE9     NOP
+0440  0E02     MOVLW 0x2
+0442  CFDB     MOVFF PLUSW2, FSR0H
+0444  FFEA     NOP
+0446  0E05     MOVLW 0x5
+0448  D96E     RCALL __pa_8
+044A  0E80     MOVLW 0x80
+044C  26E9     ADDWF FSR0L, F, ACCESS
+044E  0E00     MOVLW 0x0
+0450  22EA     ADDWFC FSR0H, F, ACCESS
+0452  50EF     MOVF INDF0, W, ACCESS
+0454  6EE6     MOVWF POSTINC1, ACCESS
+0456  0E03     MOVLW 0x3
+0458  CFDB     MOVFF PLUSW2, FSR0L
+045A  FFE9     NOP
+045C  0E04     MOVLW 0x4
+045E  CFDB     MOVFF PLUSW2, FSR0H
+0460  FFEA     NOP
+0462  D947     RCALL __pa_3
+304:               }
+305:           }
+0470  0E05     MOVLW 0x5
+0472  5CE1     SUBWF FSR1L, W, ACCESS
+0474  E202     BC 0x47A
+0476  6AE1     CLRF FSR1L, ACCESS
+0478  52E5     MOVF POSTDEC1, F, ACCESS
+047A  D14A     BRA __pa_6
+306:           
+307:           ////////////////////////////////////////////////////////////////////////////////
+308:           ////                                                                        ////
+309:           ////                            Shared Code                                 ////
+310:           ////                                                                        ////
+311:           ////////////////////////////////////////////////////////////////////////////////
+312:           
+313:           void clearStrip(char r, char g, char b) {
+047C  D935     RCALL __pa_2
+047E  52E6     MOVF POSTINC1, F, ACCESS
+314:               char i = 0;
+0480  6ADF     CLRF INDF2, ACCESS
+315:               for (i=0; i<STRIP_LENGTH; i++) {
+0482  6ADF     CLRF INDF2, ACCESS
+0484  CFDF     MOVFF INDF2, __tmp_0
+0486  F014     NOP
+0488  0E7D     MOVLW 0x7D
+048A  6EE7     MOVWF INDF1, ACCESS
+048C  1814     XORWF __tmp_0, W, ACCESS
+048E  AEE8     BTFSS WREG, 7, ACCESS
+0490  D002     BRA 0x496
+0492  34E7     RLCF INDF1, W, ACCESS
+0494  D002     BRA 0x49A
+0496  50E7     MOVF INDF1, W, ACCESS
+0498  5C14     SUBWF __tmp_0, W, ACCESS
+049A  E212     BC 0x4C0
+04BC  2ADF     INCF INDF2, F, ACCESS
+04BE  D7E2     BRA 0x484
+316:                   setLED(i,r,g,b);
+049C  0EFC     MOVLW 0xFC
+049E  CFDB     MOVFF PLUSW2, POSTINC1
+04A0  FFE6     NOP
+04A2  0EFD     MOVLW 0xFD
+04A4  CFDB     MOVFF PLUSW2, POSTINC1
+04A6  FFE6     NOP
+04A8  0EFE     MOVLW 0xFE
+04AA  CFDB     MOVFF PLUSW2, POSTINC1
+04AC  FFE6     NOP
+04AE  CFDF     MOVFF INDF2, POSTINC1
+04B0  FFE6     NOP
+04B2  D808     RCALL setLED
+04B4  52E5     MOVF POSTDEC1, F, ACCESS
+04B6  52E5     MOVF POSTDEC1, F, ACCESS
+04B8  52E5     MOVF POSTDEC1, F, ACCESS
+04BA  52E5     MOVF POSTDEC1, F, ACCESS
+317:               }
+318:           }
+04C0  52E5     MOVF POSTDEC1, F, ACCESS
+04C2  D17E     BRA __pa_22
+319:           
+320:           void setLED(unsigned char n, char r, char g, char b) {
+04C4  D974     RCALL __pa_20
+07AE  DF9C     RCALL __pa_2
+07B0  0E02     MOVLW 0x2
+07B2  26E1     ADDWF FSR1L, F, ACCESS
+07B4  0012     RETURN 0
+321:               int offset = ((int)n)*3;
+04C6  0EFE     MOVLW 0xFE
+04C8  50DB     MOVF PLUSW2, W, ACCESS
+04CA  0D03     MULLW 0x3
+04CC  CFF3     MOVFF PRODL, POSTINC2
+04CE  FFDE     NOP
+04D0  CFF4     MOVFF PRODH, POSTDEC2
+04D2  FFDD     NOP
+322:               led_buffer[offset] = g;
+04D4  D95C     RCALL __pa_17
+04D6  D94D     RCALL __pa_15
+04D8  0EFC     MOVLW 0xFC
+04DA  D938     RCALL __pa_11
+074C  CFDB     MOVFF PLUSW2, INDF0
+074E  FFEF     NOP
+323:               led_buffer[offset+1] = r;
+04DC  0E01     MOVLW 0x1
+04DE  D923     RCALL __pa_8
+04E0  D948     RCALL __pa_15
+04E2  0EFD     MOVLW 0xFD
+04E4  D933     RCALL __pa_11
+0750  EFC7     GOTO 0x78E
+0752  F003     NOP
+078E  CFDE     MOVFF POSTINC2, FSR0L
+0790  FFE9     NOP
+0792  CFDD     MOVFF POSTDEC2, FSR0H
+0794  FFEA     NOP
+0796  0012     RETURN 0
+324:               led_buffer[offset+2] = b;
+04E6  0E02     MOVLW 0x2
+04E8  D91E     RCALL __pa_8
+04EA  D943     RCALL __pa_15
+04EC  0EFB     MOVLW 0xFB
+04EE  CFDB     MOVFF PLUSW2, INDF0
+04F0  FFEF     NOP
+0726  26E9     ADDWF FSR0L, F, ACCESS
+0728  0E00     MOVLW 0x0
+072A  22EA     ADDWFC FSR0H, F, ACCESS
+072C  0012     RETURN 0
+325:           }
+04F2  0E02     MOVLW 0x2
+04F4  5CE1     SUBWF FSR1L, W, ACCESS
+04F6  E202     BC 0x4FC
+04F8  6AE1     CLRF FSR1L, ACCESS
+04FA  52E5     MOVF POSTDEC1, F, ACCESS
+04FC  D109     BRA __pa_6
+0710  6EE1     MOVWF FSR1L, ACCESS
+0712  D056     BRA __pa_22
+07C0  52E5     MOVF POSTDEC1, F, ACCESS
+07C2  CFE7     MOVFF INDF1, FSR2L
+07C4  FFD9     NOP
+07C6  0012     RETURN 0
+326:           
+327:           void displayStatus(char status) {
+04FE  D8F4     RCALL __pa_2
+06E8  CFD9     MOVFF FSR2L, POSTINC1
+06EA  FFE6     NOP
+06EC  CFE1     MOVFF FSR1L, FSR2L
+06EE  FFD9     NOP
+06F0  0012     RETURN 0
+328:               setPosition(0,0);
+0500  6AE6     CLRF POSTINC1, ACCESS
+0502  6AE6     CLRF POSTINC1, ACCESS
+0504  D931     RCALL __pa_14
+329:               sendLiteralBytes("stat:");
+0506  0E75     MOVLW 0x75
+0508  6EE6     MOVWF POSTINC1, ACCESS
+050A  0E10     MOVLW 0x10
+050C  D8F7     RCALL __pa_4
+330:               sendBinPad(status);
+050E  0EFE     MOVLW 0xFE
+0510  CFDB     MOVFF PLUSW2, POSTINC1
+0512  FFE6     NOP
+0514  EC2E     CALL 0xA5C, 0
+0516  F005     NOP
+0518  52E5     MOVF POSTDEC1, F, ACCESS
+331:               fillLine();
+051A  EC48     CALL 0xA90, 0
+051C  F005     NOP
+332:               
+333:               if (runFlag == 0) {
+051E  010E     MOVLB 0xE
+0520  510F     MOVF 0xF, W, BANKED
+0522  E108     BNZ 0x534
+334:                   setPosition(0,15);
+0524  0E0F     MOVLW 0xF
+0526  6EE6     MOVWF POSTINC1, ACCESS
+0528  6AE6     CLRF POSTINC1, ACCESS
+052A  D91E     RCALL __pa_14
+335:                   sendLiteralBytes("_");
+052C  0E73     MOVLW 0x73
+052E  6EE6     MOVWF POSTINC1, ACCESS
+0530  0E10     MOVLW 0x10
+0532  D8E4     RCALL __pa_4
+336:               }
+337:               runFlag = !runFlag;
+0534  010E     MOVLB 0xE
+0536  510F     MOVF 0xF, W, BANKED
+0538  E002     BZ 0x53E
+053A  0E00     MOVLW 0x0
+053C  D001     BRA 0x540
+053E  0E01     MOVLW 0x1
+0540  6F0F     MOVWF 0xF, BANKED
+338:               
+339:               setPosition(1,0);
+0542  6AE6     CLRF POSTINC1, ACCESS
+0544  0E01     MOVLW 0x1
+0546  6EE6     MOVWF POSTINC1, ACCESS
+0548  D90F     RCALL __pa_14
+0768  ECF3     CALL 0x7E6, 0
+076A  F003     NOP
+076C  52E5     MOVF POSTDEC1, F, ACCESS
+076E  52E5     MOVF POSTDEC1, F, ACCESS
+0770  0012     RETURN 0
+340:               if (status & 0b1000000) sendLiteralBytes("DR ");
+054A  0EFE     MOVLW 0xFE
+054C  ACDB     BTFSS PLUSW2, 6, ACCESS
+054E  D004     BRA 0x558
+0550  0E6F     MOVLW 0x6F
+0552  6EE6     MOVWF POSTINC1, ACCESS
+0554  0E10     MOVLW 0x10
+0556  D8D2     RCALL __pa_4
+341:               if (status & 0b100000) sendLiteralBytes("DS ");
+0558  0EFE     MOVLW 0xFE
+055A  AADB     BTFSS PLUSW2, 5, ACCESS
+055C  D004     BRA 0x566
+055E  0E6B     MOVLW 0x6B
+0560  6EE6     MOVWF POSTINC1, ACCESS
+0562  0E10     MOVLW 0x10
+0564  D8CB     RCALL __pa_4
+342:               if (status & 0b10000) sendLiteralBytes("RT ");
+0566  0EFE     MOVLW 0xFE
+0568  A8DB     BTFSS PLUSW2, 4, ACCESS
+056A  D004     BRA 0x574
+056C  0E67     MOVLW 0x67
+056E  6EE6     MOVWF POSTINC1, ACCESS
+0570  0E10     MOVLW 0x10
+0572  D8C4     RCALL __pa_4
+343:               if (status & 0b1) sendLiteralBytes("TXF ");
+0574  0EFE     MOVLW 0xFE
+0576  A0DB     BTFSS PLUSW2, 0, ACCESS
+0578  D004     BRA 0x582
+057A  0E62     MOVLW 0x62
+057C  6EE6     MOVWF POSTINC1, ACCESS
+057E  0E10     MOVLW 0x10
+0580  D8BD     RCALL __pa_4
+06FC  6EE6     MOVWF POSTINC1, ACCESS
+06FE  EC2F     CALL 0x85E, 0
+0700  F004     NOP
+0702  52E5     MOVF POSTDEC1, F, ACCESS
+0704  52E5     MOVF POSTDEC1, F, ACCESS
+0706  0012     RETURN 0
+344:               fill();
+0582  EC33     CALL 0xA66, 0
+0584  F005     NOP
+345:           }
+0586  D11C     BRA __pa_22
+346:           
+347:           void delay(void) {
+348:               Delay10KTCYx(254);
+0588  0EFE     MOVLW 0xFE
+058A  EFAF     GOTO 0x75E
+058C  F003     NOP
+075E  6EE6     MOVWF POSTINC1, ACCESS
+0760  EC04     CALL 0x1008, 0
+0762  F008     NOP
+0764  52E5     MOVF POSTDEC1, F, ACCESS
+0766  0012     RETURN 0
+349:           }
+350:           
+351:           ////////////////////////////////////////////////////////////////////////////////
+352:           ////                                                                        ////
+353:           ////                            System Code                                 ////
+354:           ////                                                                        ////
+355:           ////////////////////////////////////////////////////////////////////////////////
+356:           
+357:           void run(void) {
+358:               if (MODE_SELECT == MODE_SEND) {
+058E  A481     BTFSS PORTB, 2, ACCESS
+0590  D002     BRA 0x596
+359:                   senderMain();
+0592  EF4D     GOTO 0x9A
+0594  F000     NOP
+360:               } else {
+361:                   receiverMain();
+0596  EFCA     GOTO 0x394
+0598  F001     NOP
+362:               }
+363:           }
+364:           
+365:           void main(void) {
+366:               setup();
+059A  DD52     RCALL setup
+367:           
+368:               run();
+059C  DFF8     RCALL run
+369:           
+370:               while(1);
+059E  D7FF     BRA 0x59E
+371:           }
+372:           
+373:           #pragma code high_vector=0x08
+374:           void INT_AT_HIGH_VECTOR(void) {
+375:               _asm GOTO HIGH_ISR _endasm
+0008  EFD0     GOTO 0x5A0
+000A  F002     NOP
+376:           }
+000C  0012     RETURN 0
+377:           #pragma code
+378:           
+379:           //====== high interrupt service routine =======================================
+380:           #pragma interrupt HIGH_ISR
+381:           void HIGH_ISR(void) {
+05A0  CFDA     MOVFF FSR2H, PREINC1
+05A2  FFE4     NOP
+05A4  CFE2     MOVFF FSR1H, FSR2H
+05A6  FFDA     NOP
+05A8  CFE9     MOVFF FSR0L, PREINC1
+05AA  FFE4     NOP
+05AC  CFEA     MOVFF FSR0H, PREINC1
+05AE  FFE4     NOP
+05B0  CFF6     MOVFF TBLPTRL, PREINC1
+05B2  FFE4     NOP
+05B4  CFF7     MOVFF TBLPTRH, PREINC1
+05B6  FFE4     NOP
+05B8  CFF5     MOVFF TABLAT, PREINC1
+05BA  FFE4     NOP
+05BC  CFF3     MOVFF PRODL, PREINC1
+05BE  FFE4     NOP
+05C0  CFF4     MOVFF PRODH, PREINC1
+05C2  FFE4     NOP
+05C4  CFFA     MOVFF PCLATH, PREINC1
+05C6  FFE4     NOP
+05C8  EE00     LFSR 0, 0x0
+05CA  F000     NOP
+05CC  0E14     MOVLW 0x14
+05CE  04E8     DECF WREG, W, ACCESS
+05D0  E303     BNC 0x5D8
+05D2  CFEE     MOVFF POSTINC0, PREINC1
+05D4  FFE4     NOP
+05D6  D7FB     BRA 0x5CE
+05D8  EE00     LFSR 0, 0x14
+05DA  F014     NOP
+05DC  0E04     MOVLW 0x4
+05DE  04E8     DECF WREG, W, ACCESS
+05E0  E303     BNC 0x5E8
+05E2  CFEE     MOVFF POSTINC0, PREINC1
+05E4  FFE4     NOP
+05E6  D7FB     BRA 0x5DE
+05E8  52E6     MOVF POSTINC1, F, ACCESS
+382:               if (MODE_SELECT == MODE_SEND) {
+05EA  A481     BTFSS PORTB, 2, ACCESS
+05EC  D002     BRA 0x5F2
+383:                   senderInterrupt();
+05EE  DDC4     RCALL senderInterrupt
+384:               } else {
+05F0  D001     BRA 0x5F4
+385:                   receiverInterrupt();
+05F2  DEEA     RCALL receiverInterrupt
+386:               }
+387:           
+388:               INTCONbits.TMR0IF = CLEAR;
+05F4  94F2     BCF INTCON, 2, ACCESS
+389:           }
+05F6  52E5     MOVF POSTDEC1, F, ACCESS
+05F8  EE00     LFSR 0, 0x17
+05FA  F017     NOP
+05FC  0E04     MOVLW 0x4
+05FE  04E8     DECF WREG, W, ACCESS
+0600  E303     BNC 0x608
+0602  CFE5     MOVFF POSTDEC1, POSTDEC0
+0604  FFED     NOP
+0606  D7FB     BRA 0x5FE
+0608  EE00     LFSR 0, 0x13
+060A  F013     NOP
+060C  0E14     MOVLW 0x14
+060E  04E8     DECF WREG, W, ACCESS
+0610  E303     BNC 0x618
+0612  CFE5     MOVFF POSTDEC1, POSTDEC0
+0614  FFED     NOP
+0616  D7FB     BRA 0x60E
+0618  CFE5     MOVFF POSTDEC1, PCLATH
+061A  FFFA     NOP
+061C  CFE5     MOVFF POSTDEC1, PRODH
+061E  FFF4     NOP
+0620  CFE5     MOVFF POSTDEC1, PRODL
+0622  FFF3     NOP
+0624  CFE5     MOVFF POSTDEC1, TABLAT
+0626  FFF5     NOP
+0628  CFE5     MOVFF POSTDEC1, TBLPTRH
+062A  FFF7     NOP
+062C  CFE5     MOVFF POSTDEC1, TBLPTRL
+062E  FFF6     NOP
+0630  CFE5     MOVFF POSTDEC1, FSR0H
+0632  FFEA     NOP
+0634  CFE5     MOVFF POSTDEC1, FSR0L
+0636  FFE9     NOP
+0638  CFE5     MOVFF POSTDEC1, FSR2H
+063A  FFDA     NOP
+063C  0011     RETFIE 1
+390:           
+391:           ////////////////////////////////////////////////////////////////////////////////
+392:           ////                                                                        ////
+393:           ////                            LED Code                                    ////
+394:           ////                                                                        ////
+395:           ////////////////////////////////////////////////////////////////////////////////
+396:           
+397:           void updateLEDs() {
+063E  CFD9     MOVFF FSR2L, POSTINC1
+0640  FFE6     NOP
+0642  CFE1     MOVFF FSR1L, FSR2L
+0644  FFD9     NOP
+0646  52E6     MOVF POSTINC1, F, ACCESS
+398:               char saveGIE = INTCONbits.GIE;
+0648  50F2     MOVF INTCON, W, ACCESS
+064A  0B80     ANDLW 0x80
+064C  E001     BZ 0x650
+064E  0E01     MOVLW 0x1
+0650  6EDF     MOVWF INDF2, ACCESS
+399:               INTCONbits.GIE = 0;
+0652  9EF2     BCF INTCON, 7, ACCESS
+400:               _asm
+401:                       BSF PIR1, 1, ACCESS //Set the interrupt flag so that we pass through the initial wait loop without waiting
+0654  829E     BSF PIR1, 1, ACCESS
+402:           
+403:                       //load the initial memory address and populate the shifting register
+404:                       LFSR 0,led_buffer //1
+0656  EE01     LFSR 0, 0x100
+0658  F000     NOP
+405:                       MOVF POSTINC0, 0, ACCESS //1
+065A  50EE     MOVF POSTINC0, W, ACCESS
+406:                       MOVWF RXB1D7, ACCESS //1
+065C  6E3D     MOVWF 0x3D, ACCESS
+407:                   startStrip:
+408:                       //CURRENT LED
+409:                       MOVLW  STRIP_LENGTH//1
+065E  0E7D     MOVLW 0x7D
+410:                       MOVWF RXB1D4, ACCESS //1
+0660  6E3A     MOVWF 0x3A, ACCESS
+411:           
+412:                       //CURRENT COLOR COMPONENT
+413:                       MOVLW  3//1
+0662  0E03     MOVLW 0x3
+414:                       MOVWF RXB1D5, ACCESS //1
+0664  6E3B     MOVWF 0x3B, ACCESS
+415:           
+416:                       //CURRENT BIT
+417:                       MOVLW  8//1
+0666  0E08     MOVLW 0x8
+418:                       MOVWF RXB1D6, ACCESS //1
+0668  6E3C     MOVWF 0x3C, ACCESS
+419:           
+420:                   timerWaitLoop2:
+421:                       BTFSS PIR1, 1, ACCESS //1, 2 or 3
+066A  A29E     BTFSS PIR1, 1, ACCESS
+422:                       BRA timerWaitLoop2
+066C  D7FE     BRA 0x66A
+423:           
+424:                       BSF PORTB, 0, ACCESS ///////////////////////////////////////////////// SET
+066E  8081     BSF PORTB, 0, ACCESS
+425:           
+426:                       //clear timer overflow (timer trips again in 20 cycles)
+427:                       BCF PIR1, 1, ACCESS //1
+0670  929E     BCF PIR1, 1, ACCESS
+428:           
+429:                       //bit shift and set carry flag
+430:                       RLCF RXB1D7, 1, 0 //1
+0672  363D     RLCF 0x3D, F, ACCESS
+431:                       BC transmitOne //1 or 2
+0674  E20E     BC 0x692
+432:                       //NOP
+433:           
+434:                   transmitZero:
+435:                       BCF PORTB, 0, ACCESS ///////////////////////////////////////////////// CLEAR
+0676  9081     BCF PORTB, 0, ACCESS
+436:           
+437:                       //Decrement current bit, jump if nonzero
+438:                       DECF RXB1D6, 1, ACCESS //1
+0678  063C     DECF 0x3C, F, ACCESS
+439:                       BNZ timerWaitLoop2
+067A  E1F7     BNZ 0x66A
+440:           
+441:                       //load a new byte into memory
+442:                       MOVF POSTINC0, 0, ACCESS //1
+067C  50EE     MOVF POSTINC0, W, ACCESS
+443:                       MOVWF RXB1D7, ACCESS //1
+067E  6E3D     MOVWF 0x3D, ACCESS
+444:           
+445:                       //CURRENT BIT
+446:                       MOVLW  8//1
+0680  0E08     MOVLW 0x8
+447:                       MOVWF RXB1D6, ACCESS //1
+0682  6E3C     MOVWF 0x3C, ACCESS
+448:           
+449:                       //Decrement component count
+450:                       DECF RXB1D5, 1, ACCESS //1
+0684  063B     DECF 0x3B, F, ACCESS
+451:                       BNZ timerWaitLoop2
+0686  E1F1     BNZ 0x66A
+452:           
+453:                       MOVLW  3//1
+0688  0E03     MOVLW 0x3
+454:                       MOVWF RXB1D5, ACCESS //1
+068A  6E3B     MOVWF 0x3B, ACCESS
+455:           
+456:                       //Decrement LED count
+457:                       DECF RXB1D4, 1, ACCESS //1
+068C  063A     DECF 0x3A, F, ACCESS
+458:                       BNZ timerWaitLoop2
+068E  E1ED     BNZ 0x66A
+459:           
+460:                       BRA done
+0690  D012     BRA 0x6B6
+461:                   transmitOne:
+462:                       //we have a maximum of 5 cycles here
+463:                       //count NOPs
+464:                       NOP
+0692  0000     NOP
+465:                       NOP
+0694  0000     NOP
+466:                       NOP
+0696  0000     NOP
+467:                       NOP
+0698  0000     NOP
+468:                       NOP
+069A  0000     NOP
+469:           
+470:                       BCF PORTB, 0, ACCESS ///////////////////////////////////////////////// CLEAR
+069C  9081     BCF PORTB, 0, ACCESS
+471:           
+472:                       //Decrement current bit, jump if nonzero
+473:                       DECF RXB1D6, 1, ACCESS //1
+069E  063C     DECF 0x3C, F, ACCESS
+474:                       BNZ timerWaitLoop2
+06A0  E1E4     BNZ 0x66A
+475:           
+476:                       //load a new byte into memory
+477:                       MOVF POSTINC0, 0, ACCESS //1
+06A2  50EE     MOVF POSTINC0, W, ACCESS
+478:                       MOVWF RXB1D7, ACCESS //1
+06A4  6E3D     MOVWF 0x3D, ACCESS
+479:                       
+480:                       //CURRENT BIT
+481:                       MOVLW  8//1
+06A6  0E08     MOVLW 0x8
+482:                       MOVWF RXB1D6, ACCESS //1
+06A8  6E3C     MOVWF 0x3C, ACCESS
+483:           
+484:                       //decrement component count
+485:                       DECF RXB1D5, 1, ACCESS //1
+06AA  063B     DECF 0x3B, F, ACCESS
+486:                       BNZ timerWaitLoop2
+06AC  E1DE     BNZ 0x66A
+487:           
+488:                       MOVLW  3//1
+06AE  0E03     MOVLW 0x3
+489:                       MOVWF RXB1D5, ACCESS //1
+06B0  6E3B     MOVWF 0x3B, ACCESS
+490:           
+491:                       //decrement LED count
+492:                       DECF RXB1D4, 1, ACCESS //1
+06B2  063A     DECF 0x3A, F, ACCESS
+493:                       BNZ timerWaitLoop2
+06B4  E1DA     BNZ 0x66A
+494:           
+495:                   done:
+496:           
+497:                   //################### ASM RESET ##############
+498:                   // sents a reset to the LED strip
+499:                   // a reset is a low for t > 50 microseconds
+500:                   asm_reset:
+501:                       BCF PORTB, 0, ACCESS //1
+06B6  9081     BCF PORTB, 0, ACCESS
+502:           
+503:                       MOVLW 135 //1
+06B8  0E87     MOVLW 0x87
+504:                   loop:
+505:                       ADDLW -1 //1
+06BA  0FFF     ADDLW 0xFF
+506:                       BNZ loop //1 if false, 2 if true
+06BC  E1FE     BNZ 0x6BA
+507:               _endasm
+508:               INTCONbits.GIE = saveGIE;
+06BE  50DF     MOVF INDF2, W, ACCESS
+06C0  B0E8     BTFSC WREG, 0, ACCESS
+06C2  8EF2     BSF INTCON, 7, ACCESS
+06C4  A0E8     BTFSS WREG, 0, ACCESS
+06C6  9EF2     BCF INTCON, 7, ACCESS
+509:           }
+06C8  52E5     MOVF POSTDEC1, F, ACCESS
+06CA  52E5     MOVF POSTDEC1, F, ACCESS
+06CC  CFE7     MOVFF INDF1, FSR2L
+06CE  FFD9     NOP
+06D0  0012     RETURN 0
+---  /MCC18/v3_39/src/traditional/stdclib/__init.c  -----------------------------------------------------
+0006  0012     RETURN 0
+---  /MCC18/v3_39/src/traditional/startup/c018i.c  ------------------------------------------------------
+0000  EF62     GOTO 0x10C4
+0002  F008     NOP
+0004  0012     RETURN 0
+10C4  EE1D     LFSR 1, 0xD00
+10C6  F000     NOP
+10C8  EE2D     LFSR 2, 0xD00
+10CA  F000     NOP
+10CC  6AF8     CLRF TBLPTRU, ACCESS
+10CE  9C01     BCF i, 6, ACCESS
+10D0  EC67     CALL 0xECE, 0
+10D2  F007     NOP
+10D4  EC03     CALL 0x6, 0
+10D6  F000     NOP
+10D8  ECCD     CALL 0x59A, 0
+10DA  F002     NOP
+10DC  D7FB     BRA 0x10D4
+10DE  0012     RETURN 0
+0ECE  0E0E     MOVLW 0xE
+0ED0  6EF6     MOVWF TBLPTRL, ACCESS
+0ED2  0E00     MOVLW 0x0
+0ED4  6EF7     MOVWF TBLPTRH, ACCESS
+0ED6  0E00     MOVLW 0x0
+0ED8  6EF8     MOVWF TBLPTRU, ACCESS
+0EDA  010E     MOVLB 0xE
+0EDC  0009     TBLRD*+
+0EDE  50F5     MOVF TABLAT, W, ACCESS
+0EE0  6F05     MOVWF mode, BANKED
+0EE2  0009     TBLRD*+
+0EE4  50F5     MOVF TABLAT, W, ACCESS
+0EE6  6F06     MOVWF offset, BANKED
+0EE8  E103     BNZ 0xEF0
+0EEA  6705     TSTFSZ mode, BANKED
+0EEC  D001     BRA 0xEF0
+0EEE  D03D     BRA 0xF6A
+0EF0  0009     TBLRD*+
+0EF2  50F5     MOVF TABLAT, W, ACCESS
+0EF4  6F00     MOVWF fixweirdbehavior, BANKED
+0EF6  0009     TBLRD*+
+0EF8  50F5     MOVF TABLAT, W, ACCESS
+0EFA  6F01     MOVWF i, BANKED
+0EFC  0009     TBLRD*+
+0EFE  50F5     MOVF TABLAT, W, ACCESS
+0F00  6F02     MOVWF status, BANKED
+0F02  0009     TBLRD*+
+0F04  0009     TBLRD*+
+0F06  50F5     MOVF TABLAT, W, ACCESS
+0F08  6EE9     MOVWF FSR0L, ACCESS
+0F0A  0009     TBLRD*+
+0F0C  50F5     MOVF TABLAT, W, ACCESS
+0F0E  6EEA     MOVWF FSR0H, ACCESS
+0F10  0009     TBLRD*+
+0F12  0009     TBLRD*+
+0F14  0009     TBLRD*+
+0F16  50F5     MOVF TABLAT, W, ACCESS
+0F18  6F03     MOVWF i, BANKED
+0F1A  0009     TBLRD*+
+0F1C  50F5     MOVF TABLAT, W, ACCESS
+0F1E  6F04     MOVWF temp_buf, BANKED
+0F20  0009     TBLRD*+
+0F22  0009     TBLRD*+
+0F24  CFF6     MOVFF TBLPTRL, data_ptr
+0F26  FE07     NOP
+0F28  CFF7     MOVFF TBLPTRH, 0xE08
+0F2A  FE08     NOP
+0F2C  CFF8     MOVFF TBLPTRU, 0xE09
+0F2E  FE09     NOP
+0F30  CE00     MOVFF prom, TBLPTRL
+0F32  FFF6     NOP
+0F34  CE01     MOVFF 0xE01, TBLPTRH
+0F36  FFF7     NOP
+0F38  CE02     MOVFF 0xE02, TBLPTRU
+0F3A  FFF8     NOP
+0F3C  010E     MOVLB 0xE
+0F3E  5303     MOVF i, F, BANKED
+0F40  E102     BNZ 0xF46
+0F42  5304     MOVF temp_buf, F, BANKED
+0F44  E007     BZ 0xF54
+0F46  0009     TBLRD*+
+0F48  50F5     MOVF TABLAT, W, ACCESS
+0F4A  6EEE     MOVWF POSTINC0, ACCESS
+0F4C  0703     DECF i, F, BANKED
+0F4E  E2F8     BC 0xF40
+0F50  0704     DECF temp_buf, F, BANKED
+0F52  D7F9     BRA 0xF46
+0F54  CE07     MOVFF data_ptr, TBLPTRL
+0F56  FFF6     NOP
+0F58  CE08     MOVFF 0xE08, TBLPTRH
+0F5A  FFF7     NOP
+0F5C  CE09     MOVFF 0xE09, TBLPTRU
+0F5E  FFF8     NOP
+0F60  010E     MOVLB 0xE
+0F62  0705     DECF mode, F, BANKED
+0F64  0E00     MOVLW 0x0
+0F66  5B06     SUBWFB offset, F, BANKED
+0F68  D7BF     BRA 0xEE8
+0F6A  0012     RETURN 0
+---  /MCC18/v3_39/src/traditional/proc/p18F25K80.asm  ---------------------------------------------------
+10A4  0E41     MOVLW 0x41
+10A6  6EF3     MOVWF PRODL, ACCESS
+10A8  EE00     LFSR 0, 0x0
+10AA  F000     NOP
+10AC  0E0E     MOVLW 0xE
+10AE  D801     RCALL zero_block
+10B0  0012     RETURN 0
+10B2  60EA     CPFSLT FSR0H, ACCESS
+10B4  D002     BRA compare_l
+10B6  6AEE     CLRF POSTINC0, ACCESS
+10B8  D7FC     BRA zero_block
+10BA  50F3     MOVF PRODL, W, ACCESS
+10BC  60E9     CPFSLT FSR0L, ACCESS
+10BE  0012     RETURN 0
+10C0  6AEE     CLRF POSTINC0, ACCESS
+10C2  D7FC     BRA loop_l
+---  /MCC18/v3_39/src/traditional/math/fxm1616u.asm  ----------------------------------------------------
+0FCC  C008     MOVFF 0x8, 0x12
+0FCE  F012     NOP
+0FD0  5008     MOVF 0x8, W, ACCESS
+0FD2  020D     MULWF 0xD, ACCESS
+0FD4  CFF4     MOVFF PRODH, 0x7
+0FD6  F007     NOP
+0FD8  CFF3     MOVFF PRODL, offset
+0FDA  F006     NOP
+0FDC  5009     MOVF 0x9, W, ACCESS
+0FDE  020E     MULWF 0xE, ACCESS
+0FE0  CFF4     MOVFF PRODH, 0x9
+0FE2  F009     NOP
+0FE4  CFF3     MOVFF PRODL, 0x8
+0FE6  F008     NOP
+0FE8  020D     MULWF 0xD, ACCESS
+0FEA  50F3     MOVF PRODL, W, ACCESS
+0FEC  2607     ADDWF 0x7, F, ACCESS
+0FEE  50F4     MOVF PRODH, W, ACCESS
+0FF0  2208     ADDWFC 0x8, F, ACCESS
+0FF2  6AE8     CLRF WREG, ACCESS
+0FF4  2209     ADDWFC 0x9, F, ACCESS
+0FF6  5012     MOVF 0x12, W, ACCESS
+0FF8  020E     MULWF 0xE, ACCESS
+0FFA  50F3     MOVF PRODL, W, ACCESS
+0FFC  2607     ADDWF 0x7, F, ACCESS
+0FFE  50F4     MOVF PRODH, W, ACCESS
+1000  2208     ADDWFC 0x8, F, ACCESS
+1002  6AE8     CLRF WREG, ACCESS
+1004  2209     ADDWFC 0x9, F, ACCESS
+1006  0C00     RETLW 0x0
+---  /MCC18/v3_39/src/traditional/math/fxd1616u.c  ------------------------------------------------------
+1036  6A05     CLRF mode, ACCESS
+1038  6A04     CLRF temp_buf, ACCESS
+103A  0E10     MOVLW 0x10
+103C  6EE7     MOVWF INDF1, ACCESS
+103E  90D8     BCF STATUS, 0, ACCESS
+1040  3608     RLCF 0x8, F, ACCESS
+1042  3609     RLCF 0x9, F, ACCESS
+1044  3604     RLCF temp_buf, F, ACCESS
+1046  3605     RLCF mode, F, ACCESS
+1048  500D     MOVF 0xD, W, ACCESS
+104A  5C04     SUBWF temp_buf, W, ACCESS
+104C  500E     MOVF 0xE, W, ACCESS
+104E  5805     SUBWFB mode, W, ACCESS
+1050  E305     BNC 0x105C
+1052  500D     MOVF 0xD, W, ACCESS
+1054  5E04     SUBWF temp_buf, F, ACCESS
+1056  500E     MOVF 0xE, W, ACCESS
+1058  5A05     SUBWFB mode, F, ACCESS
+105A  2A08     INCF 0x8, F, ACCESS
+105C  2EE7     DECFSZ INDF1, F, ACCESS
+105E  D7F0     BRA 0x1040
+1060  0012     RETURN 0
+---  /MCC18/v3_39/src/traditional/math/fxd0808u.c  ------------------------------------------------------
+10E0  6A05     CLRF mode, ACCESS
+10E2  0E08     MOVLW 0x8
+10E4  6EE7     MOVWF INDF1, ACCESS
+10E6  90D8     BCF STATUS, 0, ACCESS
+10E8  3609     RLCF 0x9, F, ACCESS
+10EA  3605     RLCF mode, F, ACCESS
+10EC  500E     MOVF 0xE, W, ACCESS
+10EE  5C05     SUBWF mode, W, ACCESS
+10F0  E302     BNC 0x10F6
+10F2  6E05     MOVWF mode, ACCESS
+10F4  2A09     INCF 0x9, F, ACCESS
+10F6  2EE7     DECFSZ INDF1, F, ACCESS
+10F8  D7F7     BRA 0x10E8
+10FA  0012     RETURN 0
+---  /MCC18/v3_39/src/traditional/delays/d1ktcyx.asm  ---------------------------------------------------
+1084  0EFF     MOVLW 0xFF
+1086  50E3     MOVF PLUSW1, W, ACCESS
+1088  6E19     MOVWF DelayCounter1, ACCESS
+108A  0E48     MOVLW 0x48
+108C  D001     BRA D1K_1
+108E  0E4C     MOVLW 0x4C
+1090  6EE7     MOVWF INDF1, ACCESS
+1092  2EE7     DECFSZ INDF1, F, ACCESS
+1094  D7FE     BRA 0x1092
+1096  6AE7     CLRF INDF1, ACCESS
+1098  2EE7     DECFSZ INDF1, F, ACCESS
+109A  D7FE     BRA 0x1098
+109C  2E19     DECFSZ DelayCounter1, F, ACCESS
+109E  D7F7     BRA D1Kx
+10A0  0000     NOP
+10A2  0012     RETURN 0
+---  /MCC18/v3_39/src/traditional/delays/d10tcyx.asm  ---------------------------------------------------
+10FC  0EFF     MOVLW 0xFF
+10FE  50E3     MOVF PLUSW1, W, ACCESS
+1100  4EE8     DCFSNZ WREG, F, ACCESS
+1102  0012     RETURN 0
+1104  0000     NOP
+1106  D000     BRA _D10TCYXCODE_000C
+1108  D000     BRA _D10TCYXCODE_000E
+110A  D000     BRA D10_1
+110C  2EE8     DECFSZ WREG, F, ACCESS
+110E  D7FA     BRA D10x
+1110  0012     RETURN 0
+---  /MCC18/v3_39/src/traditional/delays/d10ktcyx.asm  --------------------------------------------------
+1008  0EFF     MOVLW 0xFF
+100A  50E3     MOVF PLUSW1, W, ACCESS
+100C  6E19     MOVWF DelayCounter1, ACCESS
+100E  0EEF     MOVLW 0xEF
+1010  D001     BRA D10K_1
+1012  0EF3     MOVLW 0xF3
+1014  6EE7     MOVWF INDF1, ACCESS
+1016  2EE7     DECFSZ INDF1, F, ACCESS
+1018  EF0B     GOTO 0x1016
+101A  F008     NOP
+101C  0E0C     MOVLW 0xC
+101E  6E18     MOVWF DelayCounter2, ACCESS
+1020  6AE7     CLRF INDF1, ACCESS
+1022  2EE7     DECFSZ INDF1, F, ACCESS
+1024  EF11     GOTO 0x1022
+1026  F008     NOP
+1028  2E18     DECFSZ DelayCounter2, F, ACCESS
+102A  EF10     GOTO 0x1020
+102C  F008     NOP
+102E  2E19     DECFSZ DelayCounter1, F, ACCESS
+1030  EF09     GOTO 0x1012
+1032  F008     NOP
+1034  0012     RETURN 0
+---  /MCC18/v3_39/src/pmc_common/ADC/adcread.c  ---------------------------------------------------------
+1112  50C4     MOVF ADRESH, W, ACCESS
+1114  6E17     MOVWF 0x17, ACCESS
+1116  6A16     CLRF 0x16, ACCESS
+1118  50C3     MOVF ADRESL, W, ACCESS
+111A  1016     IORWF 0x16, W, ACCESS
+111C  6EF3     MOVWF PRODL, ACCESS
+111E  C017     MOVFF 0x17, PRODH
+1120  FFF4     NOP
+1122  0012     RETURN 0
+---  /MCC18/v3_39/src/pmc_common/ADC/adcopen.c  ---------------------------------------------------------
+0F6C  CFD9     MOVFF FSR2L, POSTINC1
+0F6E  FFE6     NOP
+0F70  CFDA     MOVFF FSR2H, POSTINC1
+0F72  FFE6     NOP
+0F74  CFE1     MOVFF FSR1L, FSR2L
+0F76  FFD9     NOP
+0F78  CFE2     MOVFF FSR1H, FSR2H
+0F7A  FFDA     NOP
+0F7C  6AC2     CLRF ADCON0, ACCESS
+0F7E  6AC1     CLRF ADCON1, ACCESS
+0F80  6AC0     CLRF ADCON2, ACCESS
+0F82  0EFC     MOVLW 0xFC
+0F84  50DB     MOVF PLUSW2, W, ACCESS
+0F86  0B7C     ANDLW 0x7C
+0F88  6EC2     MOVWF ADCON0, ACCESS
+0F8A  0EFB     MOVLW 0xFB
+0F8C  50DB     MOVF PLUSW2, W, ACCESS
+0F8E  6EC1     MOVWF ADCON1, ACCESS
+0FA6  0EFD     MOVLW 0xFD
+0FA8  50DB     MOVF PLUSW2, W, ACCESS
+0FAA  0B80     ANDLW 0x80
+0F9C  0EFD     MOVLW 0xFD
+0F9E  38DB     SWAPF PLUSW2, W, ACCESS
+0FA0  0B0F     ANDLW 0xF
+0FA2  0B07     ANDLW 0x7
+0FA4  6E14     MOVWF __tmp_0, ACCESS
+0FAC  1014     IORWF __tmp_0, W, ACCESS
+0F90  0EFD     MOVLW 0xFD
+0F92  50DB     MOVF PLUSW2, W, ACCESS
+0F94  0D04     MULLW 0x4
+0F96  50F3     MOVF PRODL, W, ACCESS
+0F98  0B38     ANDLW 0x38
+0F9A  6E15     MOVWF 0x15, ACCESS
+0FAE  1015     IORWF 0x15, W, ACCESS
+0FB0  6EC0     MOVWF ADCON2, ACCESS
+0FB2  0EFC     MOVLW 0xFC
+0FB4  AEDB     BTFSS PLUSW2, 7, ACCESS
+0FB6  D003     BRA 0xFBE
+0FB8  9C9E     BCF PIR1, 6, ACCESS
+0FBA  8C9D     BSF PIE1, 6, ACCESS
+0FBC  8CF2     BSF INTCON, 6, ACCESS
+0FBE  80C2     BSF ADCON0, 0, ACCESS
+0FC0  52E5     MOVF POSTDEC1, F, ACCESS
+0FC2  CFE5     MOVFF POSTDEC1, FSR2H
+0FC4  FFDA     NOP
+0FC6  CFE7     MOVFF INDF1, FSR2L
+0FC8  FFD9     NOP
+0FCA  0012     RETURN 0
+---  /MCC18/v3_39/src/pmc_common/ADC/adcconv.c  ---------------------------------------------------------
+112E  82C2     BSF ADCON0, 1, ACCESS
+1130  0012     RETURN 0
+---  /MCC18/v3_39/src/pmc_common/ADC/adcbusy.c  ---------------------------------------------------------
+1124  50C2     MOVF ADCON0, W, ACCESS
+1126  0B02     ANDLW 0x2
+1128  E001     BZ 0x112C
+112A  0E01     MOVLW 0x1
+112C  0012     RETURN 0
