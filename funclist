@@ -1,2 +1,34 @@
-_main: CODE, 32758 0 4
-Total: 4
+_sendIntArray: CODE, 5722 0 122
+_delay: CODE, 6608 0 14
+_sendIntAsBase: CODE, 5844 0 120
+__stringdata: SMALLCONST, 3840 0 91
+_nrf_rxmode: CODE, 6458 0 26
+_nrf_SPI_RW: CODE, 6592 0 16
+_main: CODE, 6662 0 10
+_nrf_SPI_Read: CODE, 6428 0 30
+_nrf_SPI_Read_Buf: CODE, 6050 0 66
+_nrf_init: CODE, 4864 0 316
+_sendVisibleByte: CODE, 6650 0 12
+_slaveInterrupt: CODE, 6686 0 2
+_nrf_SPI_Write_Buf: CODE, 6298 0 56
+_nrf_send: CODE, 5180 0 190
+_sendDigit: CODE, 6398 0 30
+_nrf_txmode: CODE, 6484 0 26
+__initialization: CODE, 6178 0 46
+___lwdiv: CODE, 5964 0 86
+_nrf_SPI_RW_Reg: CODE, 6510 0 24
+_run: CODE, 6576 0 16
+_slaveMain: CODE, 5552 0 170
+_sendByte: CODE, 6622 0 14
+_masterInterrupt: CODE, 6688 0 2
+_nrf_getStatus: CODE, 6672 0 8
+_Delay10TCYx: CODE, 6636 0 14
+_Delay10KTCYx: CODE, 6534 0 22
+_nrf_setRxAddr: CODE, 6238 0 60
+_nrf_setTxAddr: CODE, 6116 0 62
+_nrf_recieve: CODE, 5370 0 182
+_setup: CODE, 6556 0 20
+_masterMain: CODE, 3932 0 932
+_interrupt_high: CODE, 8 0 136
+_sendLiteralBytes: CODE, 6354 0 44
+Total: 2965

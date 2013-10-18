@@ -1,4 +1,4 @@
-#include <p18F25K80.h>
+#include <xc.h>
 #include "serlcd.h"
 
 char charactersSinceFill = 0;
@@ -48,7 +48,7 @@ void sendVisibleByte(unsigned char byte) {
     sendByte(byte);
 }
 
-void sendLiteralBytes(rom const char * bytes) {
+void sendLiteralBytes(const char * bytes) {
     while(*bytes) {
         sendVisibleByte(*bytes++);
     }
@@ -110,6 +110,16 @@ void sendIntDec(unsigned int num) {
     sendIntAsBase(num,10);
 }
 
+void sendIntArray(int * arr, int len) {
+    int i;
+    sendLiteralBytes("[");
+    for (int i=0; i<len; i++) {
+        if (i != 0) sendLiteralBytes(", ");
+        sendIntAsBase(arr[i],10);
+    }
+    sendLiteralBytes("]");
+}
+
 void sendHex(unsigned char num) {
     sendLiteralBytes("0x");
     sendCharAsBase(num,16,0);
@@ -137,7 +147,10 @@ void fill(void) {
 
 void fillLine(void) {
     char i = 16-charactersSinceFill-1;
-    if (charactersSinceFill >= 16) return fill();
+    if (charactersSinceFill >= 16) {
+        fill();
+        return;
+    }
 
     while(i-- >= 0) {
         sendLiteralBytes(" ");

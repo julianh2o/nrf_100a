@@ -10,7 +10,7 @@ void setPosition(unsigned char row, unsigned char column);
 void setBacklight(unsigned char brightness); //between 0 and 29
 void clear(void);
 
-void sendLiteralBytes(rom const char * bytes);
+void sendLiteralBytes(const char * bytes);
 void sendBytes(unsigned char * bytes);
 
 void sendDigit(unsigned char digit);
@@ -19,6 +19,7 @@ void sendIntAsBase(unsigned int num, unsigned int base);
 
 void sendDec(unsigned char num);
 void sendIntDec(unsigned int num);
+void sendIntArray(int * arr, int len);
 void sendHex(unsigned char num);
 void sendBin(unsigned char num);
 void sendBinPad(unsigned char num);

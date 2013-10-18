@@ -1,6 +1,6 @@
 //For the RX target board, the connection is Gray, White, Orange, Blue, and Black, Red, White, Yellow
 
-#include "p18f25k80.h"
+#include <xc.h>
 #include "constants.h"
 #include "config.h"
 #include "serlcd.h"
@@ -34,15 +34,8 @@
 #define STRIP_LENGTH 125
 #define DATA_SIZE 375
 
-#pragma idata large_idata
-char led_buffer[375] = {10,0,0,0,10,0,0,0,10,10,10,10,0,0,10,0,10,0,10,0,0,10,10,10,0,10,0,10,0,0,0,0,10,10,10,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-#pragma idata
-
 unsigned char tx_buf[MAX_PAYLOAD];
 unsigned char rx_buf[MAX_PAYLOAD];
-char runFlag=0;
-int timerCount = 0;
-int value;
 
 void setup(void);
 
@@ -55,19 +48,13 @@ void slaveMain(void);
 void slaveInterrupt(void);
 
 ////                            Shared Code                                 ////
-void clearStrip(char r, char g, char b);
-void setLED(unsigned char n, char r, char g, char b);
 void displayStatus(char status);
 void delay(void);
 
 ////                            System Code                                 ////
 void run(void);
 void main(void);
-void INT_AT_HIGH_VECTOR(void);
-void HIGH_ISR(void);
-
-////                            LED Code                                    ////
-extern void updateLEDs(void);
+void interrupt interrupt_high(void);
 
 void setup(void) {
     //Misc config
@@ -79,6 +66,9 @@ void setup(void) {
     LED_GREEN_TRIS = OUTPUT;
     LED_RED_TRIS = OUTPUT;
     PROBE_TRIS = OUTPUT;
+
+    LED_GREEN = 1;
+    while(1);
 
     //Enable internal pullup resistor for port B
     INTCON2bits.RBPU = CLEAR;
@@ -154,16 +144,18 @@ void masterMain() {
     short l;
     short nextSlot;
     int clients[MAX_CLIENTS];
+    int clientInfo[MAX_CLIENTS];
     char mode;
     short offset;
+
+    LED_GREEN = 1;
+    while(1);
 
     nrf_init();
     delay();
 
     nrf_txmode();
     delay();
-
-    clearStrip(0,0,0);
     
     nextSlot = 0;
     for (i=0; i<MAX_CLIENTS; i++) {
@@ -181,6 +173,8 @@ void masterMain() {
     while(1) {
         LED_RED = !LED_RED;
         delay();
+        sendIntArray(&clients,MAX_CLIENTS);
+        sendLiteralBytes("\n");
         
         nrf_setTxAddr(0); //master channel
         nrf_setRxAddr(0,0); //master channel
@@ -211,17 +205,13 @@ void masterMain() {
                 STATUS_LED = 0;
                 if (nrf_send(&tx_buf,&rx_buf)) {
                     clients[i] = 1;
-                    led_buffer[3*i] = 5;
-                    led_buffer[3*i+1] = 5;
-                    led_buffer[3*i+2] = 5;
+                    clientInfo[i] = 1;
                 } else {
                     clients[i]++;
                     if (clients[i] > 3) {
                         sendLiteralBytes("Client Disconnected!\n");
                         clients[i] = 0;
-                        led_buffer[3*i] = 0;
-                        led_buffer[3*i+1] = 0;
-                        led_buffer[3*i+2] = 0;
+                        clientInfo[i] = 0;
                     }
                     for (l=0; l<MAX_CLIENTS; l++) {
                         if (clients[l] == 0) {
@@ -232,12 +222,10 @@ void masterMain() {
                 }
             }
         }
-        updateLEDs();
     }
 }
 
 void masterInterrupt(void) {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,20 +275,6 @@ void slaveInterrupt() {
 ////                                                                        ////
 ////////////////////////////////////////////////////////////////////////////////
 
-void clearStrip(char r, char g, char b) {
-    char i = 0;
-    for (i=0; i<STRIP_LENGTH; i++) {
-        setLED(i,r,g,b);
-    }
-}
-
-void setLED(unsigned char n, char r, char g, char b) {
-    int offset = ((int)n)*3;
-    led_buffer[offset] = g;
-    led_buffer[offset+1] = r;
-    led_buffer[offset+2] = b;
-}
-
 void displayStatus(char status) {
     sendLiteralBytes("stat:");
     sendBinPad(status);
@@ -341,15 +315,7 @@ void main(void) {
     while(1);
 }
 
-#pragma code high_vector=0x08
-void INT_AT_HIGH_VECTOR(void) {
-    _asm GOTO HIGH_ISR _endasm
-}
-#pragma code
-
-//====== high interrupt service routine =======================================
-#pragma interrupt HIGH_ISR
-void HIGH_ISR(void) {
+void interrupt interrupt_high(void) {
     if (MODE_SELECT == MODE_SEND) {
         masterInterrupt();
     } else {
@@ -357,124 +323,4 @@ void HIGH_ISR(void) {
     }
 
     INTCONbits.TMR0IF = CLEAR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-////                                                                        ////
-////                            LED Code                                    ////
-////                                                                        ////
-////////////////////////////////////////////////////////////////////////////////
-
-void updateLEDs() {
-    char saveGIE = INTCONbits.GIE;
-    INTCONbits.GIE = 0;
-    _asm
-            BSF PIR1, 1, ACCESS //Set the interrupt flag so that we pass through the initial wait loop without waiting
-
-            //load the initial memory address and populate the shifting register
-            LFSR 0,led_buffer //1
-            MOVF POSTINC0, 0, ACCESS //1
-            MOVWF RXB1D7, ACCESS //1
-        startStrip:
-            //CURRENT LED
-            MOVLW  STRIP_LENGTH//1
-            MOVWF RXB1D4, ACCESS //1
-
-            //CURRENT COLOR COMPONENT
-            MOVLW  3//1
-            MOVWF RXB1D5, ACCESS //1
-
-            //CURRENT BIT
-            MOVLW  8//1
-            MOVWF RXB1D6, ACCESS //1
-
-        timerWaitLoop2:
-            BTFSS PIR1, 1, ACCESS //1, 2 or 3
-            BRA timerWaitLoop2
-
-            BSF PORTA, 0, ACCESS ///////////////////////////////////////////////// SET
-
-            //clear timer overflow (timer trips again in 20 cycles)
-            BCF PIR1, 1, ACCESS //1
-
-            //bit shift and set carry flag
-            RLCF RXB1D7, 1, 0 //1
-            BC transmitOne //1 or 2
-            //NOP
-
-        transmitZero:
-            BCF PORTA, 0, ACCESS ///////////////////////////////////////////////// CLEAR
-
-            //Decrement current bit, jump if nonzero
-            DECF RXB1D6, 1, ACCESS //1
-            BNZ timerWaitLoop2
-
-            //load a new byte into memory
-            MOVF POSTINC0, 0, ACCESS //1
-            MOVWF RXB1D7, ACCESS //1
-
-            //CURRENT BIT
-            MOVLW  8//1
-            MOVWF RXB1D6, ACCESS //1
-
-            //Decrement component count
-            DECF RXB1D5, 1, ACCESS //1
-            BNZ timerWaitLoop2
-
-            MOVLW  3//1
-            MOVWF RXB1D5, ACCESS //1
-
-            //Decrement LED count
-            DECF RXB1D4, 1, ACCESS //1
-            BNZ timerWaitLoop2
-
-            BRA done
-        transmitOne:
-            //we have a maximum of 5 cycles here
-            //count NOPs
-            NOP
-            NOP
-            NOP
-            NOP
-            NOP
-
-            BCF PORTA, 0, ACCESS ///////////////////////////////////////////////// CLEAR
-
-            //Decrement current bit, jump if nonzero
-            DECF RXB1D6, 1, ACCESS //1
-            BNZ timerWaitLoop2
-
-            //load a new byte into memory
-            MOVF POSTINC0, 0, ACCESS //1
-            MOVWF RXB1D7, ACCESS //1
-            
-            //CURRENT BIT
-            MOVLW  8//1
-            MOVWF RXB1D6, ACCESS //1
-
-            //decrement component count
-            DECF RXB1D5, 1, ACCESS //1
-            BNZ timerWaitLoop2
-
-            MOVLW  3//1
-            MOVWF RXB1D5, ACCESS //1
-
-            //decrement LED count
-            DECF RXB1D4, 1, ACCESS //1
-            BNZ timerWaitLoop2
-
-        done:
-
-        //################### ASM RESET ##############
-        // sents a reset to the LED strip
-        // a reset is a low for t > 50 microseconds
-        asm_reset:
-            BCF PORTA, 0, ACCESS //1
-
-            MOVLW 135 //1
-        loop:
-            ADDLW -1 //1
-            BNZ loop //1 if false, 2 if true
-    _endasm
-    INTCONbits.GIE = saveGIE;
 }
