@@ -42,7 +42,6 @@ void slaveMain(void);
 void slaveInterrupt(void);
 
 ////                            Shared Code                                 ////
-void displayStatus(char status);
 void delay(void);
 
 ////                            System Code                                 ////
@@ -127,13 +126,13 @@ void setup(void) {
 ////                                                                        ////
 ////////////////////////////////////////////////////////////////////////////////
 #define MAX_CLIENTS 10
+int clients[MAX_CLIENTS];
+int clientInfo[MAX_CLIENTS];
 void masterMain() {
     //master
     short i;
     short l;
     short nextSlot;
-    int clients[MAX_CLIENTS];
-    int clientInfo[MAX_CLIENTS];
 
     nrf_init();
     delay();
@@ -156,10 +155,6 @@ void masterMain() {
 //    }
     while(1) {
         LED_RED = !LED_RED;
-        delay();
-        sendIntArray(&clients,MAX_CLIENTS);
-        sendLiteralBytes("\n");
-        
         nrf_setTxAddr(0); //master channel
         nrf_setRxAddr(0,0); //master channel
         tx_buf[0] = 0x42;
@@ -167,7 +162,7 @@ void masterMain() {
         //sendLiteralBytes("Attempt Send\n");
         //displayStatus(nrf_getStatus());
         if (nrf_send(&tx_buf,&rx_buf)) {
-            sendLiteralBytes("\nClient Connected!\n");
+            sendLiteralBytes("Client Connected!\n");
 
             clients[nextSlot] = 1;
 
@@ -208,6 +203,7 @@ void masterMain() {
 }
 
 void masterInterrupt(void) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,18 +252,6 @@ void slaveInterrupt() {
 ////                            Shared Code                                 ////
 ////                                                                        ////
 ////////////////////////////////////////////////////////////////////////////////
-
-void displayStatus(char status) {
-    sendLiteralBytes("stat:");
-    sendBinPad(status);
-    sendLiteralBytes("\n");
-    
-    if (status & 0b1000000) sendLiteralBytes("DR ");
-    if (status & 0b100000) sendLiteralBytes("DS ");
-    if (status & 0b10000) sendLiteralBytes("RT ");
-    if (status & 0b1) sendLiteralBytes("TXF ");
-    sendLiteralBytes("\n");
-}
 
 void delay(void) {
     Delay10KTCYx(254);
