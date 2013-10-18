@@ -5,9 +5,6 @@
 #include "config.h"
 #include "serlcd.h"
 #include "nRF2401.h"
-#include <timers.h>
-#include <math.h>
-#include <delays.h>
 
 #define LED_GREEN_TRIS TRISBbits.TRISB4
 #define LED_GREEN PORTBbits.RB4
@@ -30,9 +27,6 @@
 #define MODE_SELECT_TRIS TRISBbits.TRISB0
 #define MODE_SELECT PORTBbits.RB0
 #define MODE_SEND 1
-
-#define STRIP_LENGTH 125
-#define DATA_SIZE 375
 
 unsigned char tx_buf[MAX_PAYLOAD];
 unsigned char rx_buf[MAX_PAYLOAD];
@@ -67,9 +61,6 @@ void setup(void) {
     LED_RED_TRIS = OUTPUT;
     PROBE_TRIS = OUTPUT;
 
-    LED_GREEN = 1;
-    while(1);
-
     //Enable internal pullup resistor for port B
     INTCON2bits.RBPU = CLEAR;
     WPUB = 0b1111;
@@ -78,7 +69,7 @@ void setup(void) {
     //unimp, RD3, RD2, RD1     RD1, AN10, AN9, AN8 (in order)
     ANCON0 = 0b00000000;
     ANCON1 = 0b11111000;
-
+    
     //NRF port configure (todo: move me)
     TRIS_CE = OUTPUT;
     TRIS_CSN = OUTPUT;
@@ -138,18 +129,11 @@ void setup(void) {
 #define MAX_CLIENTS 10
 void masterMain() {
     //master
-    int fixweirdbehavior;
-    unsigned char status;
     short i;
     short l;
     short nextSlot;
     int clients[MAX_CLIENTS];
     int clientInfo[MAX_CLIENTS];
-    char mode;
-    short offset;
-
-    LED_GREEN = 1;
-    while(1);
 
     nrf_init();
     delay();
@@ -185,7 +169,6 @@ void masterMain() {
         if (nrf_send(&tx_buf,&rx_buf)) {
             sendLiteralBytes("\nClient Connected!\n");
 
-            LED_RED = 1;
             clients[nextSlot] = 1;
 
             //find the next available slot
@@ -202,7 +185,6 @@ void masterMain() {
             if (clients[i] != 0) {
                 nrf_setTxAddr(i+1); //slave channel
                 nrf_setRxAddr(0,i+1); //slave channel
-                STATUS_LED = 0;
                 if (nrf_send(&tx_buf,&rx_buf)) {
                     clients[i] = 1;
                     clientInfo[i] = 1;

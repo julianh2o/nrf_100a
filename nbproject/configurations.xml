@@ -5,21 +5,18 @@
                    displayName="Header Files"
                    projectFiles="true">
       <itemPath>constants.h</itemPath>
-      <itemPath>nRF2401.h</itemPath>
-      <itemPath>nRF2401_config.h</itemPath>
       <itemPath>config.h</itemPath>
+      <itemPath>nRF2401.h</itemPath>
       <itemPath>serlcd.h</itemPath>
-      <itemPath>serlcd_config.h</itemPath>
     </logicalFolder>
     <logicalFolder name="f1" displayName="Linker Files" projectFiles="true">
     </logicalFolder>
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>multipoint.c</itemPath>
       <itemPath>nRF2401.c</itemPath>
       <itemPath>serlcd.c</itemPath>
-      <itemPath>multipoint.c</itemPath>
-      <itemPath>led.asm</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -73,6 +70,7 @@
         <property key="ToolFirmwareFilePath"
                   value="Press to browse for a specific firmware version"/>
         <property key="ToolFirmwareOption.UseLatestFirmware" value="true"/>
+        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="false"/>
@@ -116,36 +114,8 @@
         </XC8-config-global>
       </item>
       <item path="nRF2401.h" ex="true" overriding="false">
-        <HI-TECH-COMP>
-        </HI-TECH-COMP>
-        <HI-TECH-LINK>
-        </HI-TECH-LINK>
-        <XC8-config-global>
-        </XC8-config-global>
-      </item>
-      <item path="nRF2401_config.h" ex="true" overriding="false">
-        <HI-TECH-COMP>
-        </HI-TECH-COMP>
-        <HI-TECH-LINK>
-        </HI-TECH-LINK>
-        <XC8-config-global>
-        </XC8-config-global>
       </item>
       <item path="serlcd.h" ex="true" overriding="false">
-        <HI-TECH-COMP>
-        </HI-TECH-COMP>
-        <HI-TECH-LINK>
-        </HI-TECH-LINK>
-        <XC8-config-global>
-        </XC8-config-global>
-      </item>
-      <item path="serlcd_config.h" ex="true" overriding="false">
-        <HI-TECH-COMP>
-        </HI-TECH-COMP>
-        <HI-TECH-LINK>
-        </HI-TECH-LINK>
-        <XC8-config-global>
-        </XC8-config-global>
       </item>
     </conf>
   </confs>
