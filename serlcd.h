@@ -20,6 +20,7 @@ void sendIntAsBase(unsigned int num, unsigned int base);
 void sendDec(unsigned char num);
 void sendIntDec(unsigned int num);
 void sendIntArray(int * arr, int len);
+void sendCharArray(char * arr, int len);
 void sendHex(unsigned char num);
 void sendBin(unsigned char num);
 void sendBinPad(unsigned char num);

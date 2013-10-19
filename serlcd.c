@@ -62,7 +62,7 @@ void sendDigit(unsigned char digit) {
 }
 
 void sendCharAsBase(unsigned char num, unsigned char base, unsigned char padOutput) {
-    unsigned char quotient;
+    unsigned char quotient = 1;
     unsigned char remainder;
     unsigned char i = 0;
     unsigned char digits[8];
@@ -116,6 +116,16 @@ void sendIntArray(int * arr, int len) {
     for (int i=0; i<len; i++) {
         if (i != 0) sendLiteralBytes(", ");
         sendIntAsBase(arr[i],10);
+    }
+    sendLiteralBytes("]");
+}
+
+void sendCharArray(char * arr, int len) {
+    int i;
+    sendLiteralBytes("[");
+    for (int i=0; i<len; i++) {
+        if (i != 0) sendLiteralBytes(", ");
+        sendDec(arr[i]);
     }
     sendLiteralBytes("]");
 }

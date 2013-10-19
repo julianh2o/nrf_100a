@@ -33,19 +33,14 @@ unsigned char rx_buf[MAX_PAYLOAD];
 
 void setup(void);
 
-////                            MasterCode                                 ////
-void masterMain(void);
-void masterInterrupt(void);
-
-////                          SlaveCode                                 ////
-void slaveMain(void);
-void slaveInterrupt(void);
+void run(void);
+void interruptHandler(void);
 
 ////                            Shared Code                                 ////
 void delay(void);
 
 ////                            System Code                                 ////
-void run(void);
+
 void main(void);
 void interrupt interrupt_high(void);
 
@@ -68,7 +63,7 @@ void setup(void) {
     //unimp, RD3, RD2, RD1     RD1, AN10, AN9, AN8 (in order)
     ANCON0 = 0b00000000;
     ANCON1 = 0b11111000;
-    
+
     //NRF port configure (todo: move me)
     TRIS_CE = OUTPUT;
     TRIS_CSN = OUTPUT;
@@ -100,7 +95,7 @@ void setup(void) {
     INTCONbits.TMR0IE = 1;
     INTCONbits.TMR0IF = 0;
     INTCONbits.PEIE = 1;
-    INTCONbits.GIE = 1;
+    INTCONbits.GIE = 0;
 
 
     //set up USB serial port
@@ -114,7 +109,7 @@ void setup(void) {
 
     // 19.2kbaud = 001, 832
     SPBRG1 = 34;
-    
+
     //9.6kbaud = 000, 103
     //SPBRG1 = 103;
     RCSTA1bits.CREN = SET;
@@ -122,129 +117,174 @@ void setup(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 ////                                                                        ////
-////                            Sender Code                                 ////
+////                            Main   Code                                 ////
 ////                                                                        ////
 ////////////////////////////////////////////////////////////////////////////////
-#define MAX_CLIENTS 10
-int clients[MAX_CLIENTS];
-int clientInfo[MAX_CLIENTS];
-void masterMain() {
-    //master
-    short i;
-    short l;
-    short nextSlot;
+#define MAX_NETWORK_SIZE 10
+char clients[MAX_NETWORK_SIZE];
+char client_count;
+char turn;
 
-    nrf_init();
-    delay();
-
-    nrf_txmode();
-    delay();
-    
-    nextSlot = 0;
-    for (i=0; i<MAX_CLIENTS; i++) {
-        clients[i] = 0;
+void flashGreen() {
+    while(1) {
+        LED_GREEN = !LED_GREEN;
+        delay();
     }
+}
 
-    sendLiteralBytes("\nLoop Start\n");
-    LED_RED = 0;
-    LED_GREEN = 0;
-//    while(1) {
-//        LED_RED = !LED_RED;
-//        LED_GREEN = nrf_send(&tx_buf,&rx_buf);
-//        delay();
-//    }
+void flashRed() {
     while(1) {
         LED_RED = !LED_RED;
-        nrf_setTxAddr(0); //master channel
-        nrf_setRxAddr(0,0); //master channel
-        tx_buf[0] = 0x42;
-        tx_buf[1] = nextSlot+1;
-        //sendLiteralBytes("Attempt Send\n");
-        //displayStatus(nrf_getStatus());
-        if (nrf_send(&tx_buf,&rx_buf)) {
-            sendLiteralBytes("Client Connected!\n");
-
-            clients[nextSlot] = 1;
-
-            //find the next available slot
-            nextSlot = -1;
-            for (i=0; i<MAX_CLIENTS; i++) {
-                if (clients[i] == 0) {
-                    nextSlot = i;
-                    break;
-                }
-            }
-        }
-
-        for (i=0; i<MAX_CLIENTS; i++) {
-            if (clients[i] != 0) {
-                nrf_setTxAddr(i+1); //slave channel
-                nrf_setRxAddr(0,i+1); //slave channel
-                if (nrf_send(&tx_buf,&rx_buf)) {
-                    clients[i] = 1;
-                    clientInfo[i] = 1;
-                } else {
-                    clients[i]++;
-                    if (clients[i] > 3) {
-                        sendLiteralBytes("Client Disconnected!\n");
-                        clients[i] = 0;
-                        clientInfo[i] = 0;
-                    }
-                    for (l=0; l<MAX_CLIENTS; l++) {
-                        if (clients[l] == 0) {
-                            nextSlot = l;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        delay();
     }
 }
 
-void masterInterrupt(void) {
-
+void flashAlternate() {
+    while(1) {
+        LED_RED = !LED_RED;
+        LED_GREEN = !LED_RED;
+        delay();
+    }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////                                                                        ////
-////                            Receiver Code                               ////
-////                                                                        ////
-////////////////////////////////////////////////////////////////////////////////
+void flashBoth() {
+    while(1) {
+        LED_RED = !LED_RED;
+        LED_GREEN = LED_RED;
+        delay();
+    }
+}
 
-void slaveMain() {
-    //slave
-    int i;
-    char offset;
-    char status;
-
-    nrf_init();
-    delay();
-
+char seekExistingNetwork(void) {
+    unsigned long i = 0;
+    
     nrf_rxmode();
     delay();
 
-//    while(1) {
-//        LED_GREEN = nrf_receive(&tx_buf, &rx_buf);
-//    }
+    while(i++ < 100) {
+        LED_GREEN = !LED_GREEN;
+        if (nrf_receive(&tx_buf, &rx_buf)) {
+            LED_GREEN = 0;
+            return 1;
+        }
+        Delay10KTCYx(20);
+    }
+    return 0;
+}
+
+int gatherNetworkData(char * arr) {
+    int i;
+    while(!nrf_receive(&tx_buf, &rx_buf));
+
+    for (i=0; i<rx_buf[1]; i++) {
+        arr[i] = rx_buf[2+i];
+    }
+    return rx_buf[1];
+}
+
+int assignId(char * arr, int len) {
+    int i;
+    int max = 0;
+    for (i=0; i<len; i++) {
+        if (arr[i] > max) max = arr[i];
+    }
+    return max+1;
+}
+
+int findClientId(char * arr, int len, int seek) {
+    int i;
+    for (i=0; i<len; i++) {
+        if (arr[i] == seek) return i;
+    }
+    return -1;
+}
+
+void participateInNetwork(char id) {
+}
+
+void run(void) {
+    nrf_init();
+    delay();
 
     nrf_setTxAddr(0);
     nrf_setRxAddr(0, 0);
 
-    rx_buf[0] = 0;
-    while(rx_buf[0] != 0x42) {
-        nrf_receive(&tx_buf, &rx_buf);
+    LED_GREEN = 1;
+    delay();
+    LED_GREEN = 0;
+
+    unsigned int id = 1;
+    client_count = 1;
+    clients[0] = id;
+
+    sendLiteralBytes("Seeking network..\n");
+    if (seekExistingNetwork()) {
+        sendLiteralBytes("Found existing network!\n");
+        client_count = gatherNetworkData(&clients);
+
+        id = assignId(&clients,client_count);
+        clients[client_count++] = id;
+
+        sendLiteralBytes("Assuming ID: ");
+        sendDec(id);
+        sendLiteralBytes("\n");
+
+        sendCharArray(clients,client_count);
+        sendLiteralBytes("\n");
+
+        flashRed(); //TODO this causes us to freeze when we detect an existing network
     }
-    
-    nrf_setTxAddr(rx_buf[1]);
-    nrf_setRxAddr(0, rx_buf[1]);
+
+    sendLiteralBytes("Entering main loop\n");
+
     while(1) {
-        LED_GREEN = nrf_receive(&tx_buf, &rx_buf);
+        tx_buf[0] = id;
+        tx_buf[1] = client_count;
+        for (int i=0; i<client_count; i++) {
+            tx_buf[2+i] = clients[i];
+        }
+        LED_RED = nrf_send(&tx_buf,&rx_buf);
     }
+    //TODO write the round robin turn-based interaction code
+//
+//    nrf_rxmode();
+//    Delay10KTCYx(20);
+//
+//    while(!nrf_receive(&tx_buf, &rx_buf)) { //wait for next packet
+//        turn = findClientId(&clients, client_count, rx_buf[0]);
+//    }
+//    turn++;
+//
+//    INTCONbits.GIE = 1;
+//    flashGreen();
+//    while(1) {
+//
+//    }
 }
 
-void slaveInterrupt() {
-
+void interruptHandler() {
+//    if (clients[turn] == id) { //its my turn, switch to TX mode and transmit
+//        nrf_txmode();
+//        Delay10KTCYx(20);
+//
+//        tx_buf[0] = id;
+//        tx_buf[1] = client_count;
+//        for (int i=0; i<client_count; i++) {
+//            tx_buf[2+i] = clients[i];
+//        }
+//
+//        nrf_send(&tx_buf, &rx_buf);
+//    } else {
+//        Delay10KTCYx(30);
+//        nrf_receive(&tx_buf, &rx_buf);
+//    }
+//
+//    if (clients[turn+1] == id) { //my turn is next!
+//        nrf_txmode();
+//        Delay10KTCYx(20);
+//    }
+//
+//    turn++;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,16 +303,6 @@ void delay(void) {
 ////                                                                        ////
 ////////////////////////////////////////////////////////////////////////////////
 
-void run(void) {
-    while(1) {
-        if (MODE_SELECT == MODE_SEND) {
-            masterMain();
-        } else {
-            slaveMain();
-        }
-    }
-}
-
 void main(void) {
     setup();
 
@@ -282,11 +312,7 @@ void main(void) {
 }
 
 void interrupt interrupt_high(void) {
-    if (MODE_SELECT == MODE_SEND) {
-        masterInterrupt();
-    } else {
-        slaveInterrupt();
-    }
+    interruptHandler();
 
     INTCONbits.TMR0IF = CLEAR;
 }
