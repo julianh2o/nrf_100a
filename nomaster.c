@@ -122,7 +122,9 @@ void setup(void) {
 ////////////////////////////////////////////////////////////////////////////////
 #define MAX_NETWORK_SIZE 10
 char clients[MAX_NETWORK_SIZE];
+char client_data[MAX_NETWORK_SIZE];
 char client_count;
+char revision;
 char turn;
 
 void flashGreen() {
@@ -172,14 +174,13 @@ char seekExistingNetwork(void) {
     return 0;
 }
 
-int gatherNetworkData(char * arr) {
+void adoptRevision(char * arr) {
     int i;
-    while(!nrf_receive(&tx_buf, &rx_buf));
-
-    for (i=0; i<rx_buf[1]; i++) {
-        arr[i] = rx_buf[2+i];
+    for (i=0; i<arr[1]; i++) {
+        clients[i] = arr[5+i];
     }
-    return rx_buf[1];
+    revision = arr[1];
+    client_count = arr[2];
 }
 
 int assignId(char * arr, int len) {
@@ -202,6 +203,12 @@ int findClientId(char * arr, int len, int seek) {
 void participateInNetwork(char id) {
 }
 
+void printPacket() {
+    sendLiteralBytes("Packet: ");
+    sendCharArray(&rx_buf,32);
+    sendLiteralBytes("\n");
+}
+
 void run(void) {
     nrf_init();
     delay();
@@ -216,14 +223,19 @@ void run(void) {
     unsigned int id = 1;
     client_count = 1;
     clients[0] = id;
+    revision = 0;
+    turn = 0;
 
     sendLiteralBytes("Seeking network..\n");
     if (seekExistingNetwork()) {
         sendLiteralBytes("Found existing network!\n");
-        client_count = gatherNetworkData(&clients);
+        sendCharArray(&rx_buf,32);
+        sendLiteralBytes("\n");
+        adoptRevision(&rx_buf); //we already have a packet stored from seeking
 
         id = assignId(&clients,client_count);
         clients[client_count++] = id;
+        revision++;
 
         sendLiteralBytes("Assuming ID: ");
         sendDec(id);
@@ -232,37 +244,134 @@ void run(void) {
         sendCharArray(clients,client_count);
         sendLiteralBytes("\n");
 
-        flashRed(); //TODO this causes us to freeze when we detect an existing network
+        turn = findClientId(&clients, client_count, rx_buf[0]);
+        turn++;
     }
 
     sendLiteralBytes("Entering main loop\n");
+    sendLiteralBytes("ID: ");
+    sendDec(id);
+    sendLiteralBytes("\n");
+    INTCONbits.GIE = 0;
 
     while(1) {
-        tx_buf[0] = id;
-        tx_buf[1] = client_count;
-        for (int i=0; i<client_count; i++) {
-            tx_buf[2+i] = clients[i];
+//        sendLiteralBytes("turn: ");
+//        sendDec(turn);
+//        sendLiteralBytes("\n");
+
+        TMR0 = 0;
+        INTCONbits.TMR0IF = CLEAR;
+
+        if (clients[turn] == id) { //my turn
+            nrf_txmode();
+            Delay1TCYx(20);
+
+
+            tx_buf[0] = id;
+            tx_buf[1] = revision;
+            tx_buf[2] = client_count;
+            tx_buf[3] = MODE_SELECT;//DATA
+            tx_buf[4] = 0;
+            
+            for (int i=0; i<client_count; i++) {
+                tx_buf[5+i] = clients[i];
+            }
+            tx_buf[5+client_count] = 0;
+
+            if (tx_buf[3] > 1) {
+                sendLiteralBytes("Invalid state update!!");
+            }
+
+            if (tx_buf[3] != client_data[turn]) {
+                client_data[turn] = tx_buf[3];
+                sendLiteralBytes("My state update: ");
+                sendCharArray(&client_data,client_count);
+                sendLiteralBytes("\n");
+            }
+
+            nrf_send(&tx_buf,&rx_buf);
+            nrf_rxmode();
+
+            while(!INTCONbits.TMR0IF);
+        } else {
+            while(!INTCONbits.TMR0IF) {
+                if (nrf_receive(&tx_buf,&rx_buf)) {
+                    LED_GREEN = !LED_GREEN;
+                    if (turn < client_count) {
+                        if (clients[turn] != rx_buf[0]) {
+                            LED_GREEN = 0;
+                            printPacket();
+
+                            //ID mismatch!
+                            sendLiteralBytes("ID mismatch on incoming packet! \n");
+                            sendDec(clients[turn]);
+                            sendLiteralBytes(" != ");
+                            sendDec(rx_buf[0]);
+                            sendLiteralBytes("\n");
+                            sendLiteralBytes("Turn: ");
+                            sendDec(turn);
+                            sendLiteralBytes("\n");
+                            sendCharArray(&clients,client_count);
+                            sendLiteralBytes("\n");
+                            flashRed();
+                            continue;
+                        }
+
+                        if (client_data[turn] != rx_buf[3]) {
+                            client_data[turn] = rx_buf[3];
+                            sendLiteralBytes("Network state update: ");
+                            sendCharArray(&client_data,client_count);
+                            sendLiteralBytes("\n");
+                            sendLiteralBytes("Turn: ");
+                            sendDec(turn);
+                            sendLiteralBytes("\n");
+                            printPacket();
+                        }
+                    }
+
+                    if (rx_buf[1] > revision) {
+                        printPacket();
+                        sendLiteralBytes("discovered new revision: ");
+                        sendDec(rx_buf[1]);
+                        adoptRevision(&rx_buf);
+                        sendLiteralBytes("\n");
+                    }
+                    break;
+                }
+            }
         }
-        LED_RED = nrf_send(&tx_buf,&rx_buf);
+
+        turn++;
+        if (turn > client_count) turn = 0;
     }
+
+//    while(1) {
+//        tx_buf[0] = id;
+//        tx_buf[1] = client_count;
+//        for (int i=0; i<client_count; i++) {
+//            tx_buf[2+i] = clients[i];
+//        }
+//        LED_RED = nrf_send(&tx_buf,&rx_buf);
+//    }
     //TODO write the round robin turn-based interaction code
 //
-//    nrf_rxmode();
-//    Delay10KTCYx(20);
-//
-//    while(!nrf_receive(&tx_buf, &rx_buf)) { //wait for next packet
-//        turn = findClientId(&clients, client_count, rx_buf[0]);
-//    }
 //    turn++;
 //
-//    INTCONbits.GIE = 1;
 //    flashGreen();
 //    while(1) {
 //
 //    }
 }
 
+//char clients[MAX_NETWORK_SIZE];
+//char client_count;
+//char turn;
+int tickCount = 0;
 void interruptHandler() {
+    if (tickCount++ < 100) return;
+    tickCount = 0;
+    
+    LED_GREEN = !LED_GREEN;
 //    if (clients[turn] == id) { //its my turn, switch to TX mode and transmit
 //        nrf_txmode();
 //        Delay10KTCYx(20);
