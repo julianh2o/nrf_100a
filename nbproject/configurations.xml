@@ -16,7 +16,7 @@
                    projectFiles="true">
       <itemPath>nRF2401.c</itemPath>
       <itemPath>serlcd.c</itemPath>
-      <itemPath>nomaster.c</itemPath>
+      <itemPath>collisiontest.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"

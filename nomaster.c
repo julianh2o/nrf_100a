@@ -111,7 +111,6 @@ void setup(void) {
     SPBRG1 = 34;
 
     //9.6kbaud = 000, 103
-    //SPBRG1 = 103;
     RCSTA1bits.CREN = SET;
 }
 
@@ -176,11 +175,11 @@ char seekExistingNetwork(void) {
 
 void adoptRevision(char * arr) {
     int i;
-    for (i=0; i<arr[1]; i++) {
-        clients[i] = arr[5+i];
-    }
     revision = arr[1];
     client_count = arr[2];
+    for (i=0; i<client_count; i++) {
+        clients[i] = arr[5+i];
+    }
 }
 
 int assignId(char * arr, int len) {
@@ -263,15 +262,11 @@ void run(void) {
         INTCONbits.TMR0IF = CLEAR;
 
         if (clients[turn] == id) { //my turn
-            nrf_txmode();
-            Delay1TCYx(20);
-
-
             tx_buf[0] = id;
             tx_buf[1] = revision;
             tx_buf[2] = client_count;
             tx_buf[3] = MODE_SELECT;//DATA
-            tx_buf[4] = 0;
+            tx_buf[4] = 42;
             
             for (int i=0; i<client_count; i++) {
                 tx_buf[5+i] = clients[i];
@@ -296,6 +291,12 @@ void run(void) {
         } else {
             while(!INTCONbits.TMR0IF) {
                 if (nrf_receive(&tx_buf,&rx_buf)) {
+                    if (rx_buf[4] != 42) {
+                        //sendLiteralBytes("Packet ignored: \n");
+                        //printPacket();
+                        continue;
+                    }
+
                     LED_GREEN = !LED_GREEN;
                     if (turn < client_count) {
                         if (clients[turn] != rx_buf[0]) {
@@ -313,6 +314,7 @@ void run(void) {
                             sendLiteralBytes("\n");
                             sendCharArray(&clients,client_count);
                             sendLiteralBytes("\n");
+                            
                             flashRed();
                             continue;
                         }
@@ -322,19 +324,19 @@ void run(void) {
                             sendLiteralBytes("Network state update: ");
                             sendCharArray(&client_data,client_count);
                             sendLiteralBytes("\n");
-                            sendLiteralBytes("Turn: ");
-                            sendDec(turn);
-                            sendLiteralBytes("\n");
+//                            sendLiteralBytes("Turn: ");
+//                            sendDec(turn);
+//                            sendLiteralBytes("\n");
                             printPacket();
                         }
                     }
 
                     if (rx_buf[1] > revision) {
                         printPacket();
-                        sendLiteralBytes("discovered new revision: ");
+                        sendLiteralBytes("Adopting new network revision: ");
                         sendDec(rx_buf[1]);
-                        adoptRevision(&rx_buf);
                         sendLiteralBytes("\n");
+                        adoptRevision(&rx_buf);
                     }
                     break;
                 }
@@ -343,6 +345,11 @@ void run(void) {
 
         turn++;
         if (turn > client_count) turn = 0;
+
+        if (clients[turn] == id) {
+            nrf_txmode();
+        }
+        while(!INTCONbits.TMR0IF);
     }
 
 //    while(1) {
