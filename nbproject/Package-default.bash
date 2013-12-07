@@ -10,9 +10,9 @@ CND_CONF=default
 CND_DISTDIR=dist
 TMPDIR=build/${CND_CONF}/${IMAGE_TYPE}/tmp-packaging
 TMPDIRNAME=tmp-packaging
-OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/nrf_100a.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-OUTPUT_BASENAME=nrf_100a.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-PACKAGE_TOP_DIR=nrf100a/
+OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/led_100a.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+OUTPUT_BASENAME=led_100a.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+PACKAGE_TOP_DIR=led100a/
 
 # Functions
 function checkReturnCode
@@ -57,15 +57,15 @@ mkdir -p ${TMPDIR}
 
 # Copy files and create directories and links
 cd "${TOP}"
-makeDirectory ${TMPDIR}/nrf100a/bin
+makeDirectory ${TMPDIR}/led100a/bin
 copyFileToTmpDir "${OUTPUT_PATH}" "${TMPDIR}/${PACKAGE_TOP_DIR}bin/${OUTPUT_BASENAME}" 0755
 
 
 # Generate tar file
 cd "${TOP}"
-rm -f ${CND_DISTDIR}/${CND_CONF}/package/nrf100a.tar
+rm -f ${CND_DISTDIR}/${CND_CONF}/package/led100a.tar
 cd ${TMPDIR}
-tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/nrf100a.tar *
+tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/led100a.tar *
 checkReturnCode
 
 # Cleanup

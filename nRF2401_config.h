@@ -1,10 +1,10 @@
 #include "p18f25k80.h"
 
 // Pin Definitions
-#define CE              PORTCbits.RC0
-#define TRIS_CE		TRISCbits.TRISC0
-#define CSN		PORTCbits.RC1
-#define TRIS_CSN	TRISCbits.TRISC1
+#define CE              PORTBbits.RB1
+#define TRIS_CE		TRISBbits.TRISB1
+#define CSN             PORTBbits.RB0
+#define TRIS_CSN	TRISBbits.TRISB0
 #define IRQ		PORTCbits.RC2
 #define TRIS_IRQ	TRISCbits.TRISC2
 
