@@ -15,18 +15,15 @@
 #define STRIP_DATA_TRIS TRISAbits.TRISA0
 #define STRIP_DATA PORTAbits.RA0
 
-#define PROBE_TRIS TRISAbits.TRISA1
-#define PROBE PORTAbits.RA1
-
 #define STATUS_TRIS TRISBbits.TRISB4
 #define STATUS_LED PORTBbits.RB4
-
-#define BUTTON_TRIS TRISBbits.TRISB1
-#define BUTTON PORTBbits.RB1
 
 #define MODE_SELECT_TRIS TRISBbits.TRISB0
 #define MODE_SELECT PORTBbits.RB0
 #define MODE_SEND 1
+
+#define DIP_3_TRIS TRISBbits.TRISB1
+#define DIP_3 PORTBbits.RB1
 
 unsigned char tx_buf[MAX_PAYLOAD];
 unsigned char rx_buf[MAX_PAYLOAD];
@@ -34,18 +31,13 @@ unsigned char rx_buf[MAX_PAYLOAD];
 void setup(void);
 
 ////                            MasterCode                                 ////
-void masterMain(void);
-void masterInterrupt(void);
-
-////                          SlaveCode                                 ////
-void slaveMain(void);
-void slaveInterrupt(void);
+void run(void);
+void interruptService(void);
 
 ////                            Shared Code                                 ////
 void delay(void);
 
 ////                            System Code                                 ////
-void run(void);
 void main(void);
 void interrupt interrupt_high(void);
 
@@ -53,12 +45,11 @@ void setup(void) {
     //Misc config
     STRIP_DATA_TRIS = OUTPUT;
     STATUS_TRIS = OUTPUT;
-    BUTTON_TRIS = INPUT;
     MODE_SELECT_TRIS = INPUT;
     STATUS_LED = 0;
     LED_GREEN_TRIS = OUTPUT;
     LED_RED_TRIS = OUTPUT;
-    PROBE_TRIS = OUTPUT;
+    DIP_3_TRIS = INPUT;
 
     //Enable internal pullup resistor for port B
     INTCON2bits.RBPU = CLEAR;
@@ -116,7 +107,6 @@ void setup(void) {
     SPBRG1 = 34;
     
     //9.6kbaud = 000, 103
-    //SPBRG1 = 103;
     RCSTA1bits.CREN = SET;
 }
 
@@ -125,97 +115,21 @@ void setup(void) {
 ////                            Sender Code                                 ////
 ////                                                                        ////
 ////////////////////////////////////////////////////////////////////////////////
-#define MAX_CLIENTS 10
-int clients[MAX_CLIENTS];
-int clientInfo[MAX_CLIENTS];
-void masterMain() {
-    //master
-    short i;
-    short l;
-    short nextSlot;
-
-    nrf_init();
-    delay();
-
-    nrf_txmode();
-    delay();
-    
-    nextSlot = 0;
-    for (i=0; i<MAX_CLIENTS; i++) {
-        clients[i] = 0;
-    }
-
-    sendLiteralBytes("\nLoop Start\n");
-    LED_RED = 0;
-    LED_GREEN = 0;
-//    while(1) {
-//        LED_RED = !LED_RED;
-//        LED_GREEN = nrf_send(&tx_buf,&rx_buf);
-//        delay();
-//    }
-    while(1) {
-        LED_RED = !LED_RED;
-        nrf_setTxAddr(0); //master channel
-        nrf_setRxAddr(0,0); //master channel
-        tx_buf[0] = 0x42;
-        tx_buf[1] = nextSlot+1;
-        //sendLiteralBytes("Attempt Send\n");
-        //displayStatus(nrf_getStatus());
-        if (nrf_send(&tx_buf,&rx_buf)) {
-            sendLiteralBytes("Client Connected!\n");
-
-            clients[nextSlot] = 1;
-
-            //find the next available slot
-            nextSlot = -1;
-            for (i=0; i<MAX_CLIENTS; i++) {
-                if (clients[i] == 0) {
-                    nextSlot = i;
-                    break;
-                }
-            }
-        }
-
-        for (i=0; i<MAX_CLIENTS; i++) {
-            if (clients[i] != 0) {
-                nrf_setTxAddr(i+1); //slave channel
-                nrf_setRxAddr(0,i+1); //slave channel
-                if (nrf_send(&tx_buf,&rx_buf)) {
-                    clients[i] = 1;
-                    clientInfo[i] = 1;
-                } else {
-                    clients[i]++;
-                    if (clients[i] > 3) {
-                        sendLiteralBytes("Client Disconnected!\n");
-                        clients[i] = 0;
-                        clientInfo[i] = 0;
-                    }
-                    for (l=0; l<MAX_CLIENTS; l++) {
-                        if (clients[l] == 0) {
-                            nextSlot = l;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void masterInterrupt(void) {
-
-}
-
-////////////////////////////////////////////////////////////////////////////////
-////                                                                        ////
-////                            Receiver Code                               ////
-////                                                                        ////
-////////////////////////////////////////////////////////////////////////////////
-
-void slaveMain() {
-    //slave
+void dumpNrf(void) {
     int i;
-    char offset;
+    char val;
+    for (int i=0; i<=0x1d; i++) {
+        val = nrf_readRegister(i);
+        sendHex(i);
+        sendLiteralBytes("\t");
+        sendHex(val);
+        sendLiteralBytes("\n");
+    }
+}
+
+void run(void) {
+    int i;
+    short nextSlot;
     char status;
 
     nrf_init();
@@ -224,26 +138,49 @@ void slaveMain() {
     nrf_rxmode();
     delay();
 
-//    while(1) {
-//        LED_GREEN = nrf_receive(&tx_buf, &rx_buf);
-//    }
+    //nrf_setTxAddr(0);
+    //nrf_setRxAddr(0,0);
 
-    nrf_setTxAddr(0);
-    nrf_setRxAddr(0, 0);
+    sendLiteralBytes("Receiver!\n");
 
-    rx_buf[0] = 0;
-    while(rx_buf[0] != 0x42) {
-        nrf_receive(&tx_buf, &rx_buf);
-    }
-    
-    nrf_setTxAddr(rx_buf[1]);
-    nrf_setRxAddr(0, rx_buf[1]);
+    dumpNrf();
+
+    i=0;
     while(1) {
-        LED_GREEN = nrf_receive(&tx_buf, &rx_buf);
+        LED_RED++;
+        sendIntDec(nrf_getStatus());
+        sendLiteralBytes("\n");
+
+        LED_GREEN = nrf_receive(&tx_buf,&rx_buf);
+        delay();
     }
 }
 
-void slaveInterrupt() {
+void runSend(void) {
+    nrf_init();
+    delay();
+
+    nrf_txmode();
+    delay();
+
+    //nrf_setTxAddr(0);
+    //nrf_setRxAddr(0,0);
+
+    sendLiteralBytes("Sender!\n");
+
+    dumpNrf();
+
+    tx_buf[0] = 42;
+    while(1) {
+        LED_RED++;
+        LED_GREEN = nrf_send(&tx_buf,&rx_buf);
+        sendIntDec(nrf_getStatus());
+        sendLiteralBytes("\n");
+        delay();
+    }
+}
+
+void interruptService(void) {
 
 }
 
@@ -263,30 +200,21 @@ void delay(void) {
 ////                                                                        ////
 ////////////////////////////////////////////////////////////////////////////////
 
-void run(void) {
-    while(1) {
-        if (MODE_SELECT == MODE_SEND) {
-            masterMain();
-        } else {
-            slaveMain();
-        }
-    }
-}
 
 void main(void) {
     setup();
 
-    run();
+    if (MODE_SELECT == MODE_SEND) {
+        runSend();
+    } else {
+        run();
+    }
 
     while(1);
 }
 
 void interrupt interrupt_high(void) {
-    if (MODE_SELECT == MODE_SEND) {
-        masterInterrupt();
-    } else {
-        slaveInterrupt();
-    }
+    interruptService();
 
     INTCONbits.TMR0IF = CLEAR;
 }

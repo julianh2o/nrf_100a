@@ -6,24 +6,29 @@
 #include "serlcd.h"
 #include "nRF2401.h"
 
-#define LED_GREEN_TRIS TRISBbits.TRISB4
-#define LED_GREEN PORTBbits.RB4
 
-#define LED_RED_TRIS TRISBbits.TRISB5
-#define LED_RED PORTBbits.RB5
+    //a1 //red
+    //a2 //green
+    //a3 //yellow
+    //b3 //eeprom
+#define LED_RED_TRIS      TRISAbits.TRISA0
+#define LED_RED           PORTAbits.RA0
 
-#define STRIP_DATA_TRIS TRISAbits.TRISA0
-#define STRIP_DATA PORTAbits.RA0
+#define LED_GREEN_TRIS    TRISAbits.TRISA1
+#define LED_GREEN         PORTAbits.RA1
 
-#define STATUS_TRIS TRISBbits.TRISB4
-#define STATUS_LED PORTBbits.RB4
+#define LED_YELLOW_TRIS   TRISAbits.TRISA2
+#define LED_YELLOW        PORTAbits.RA2
 
-#define MODE_SELECT_TRIS TRISBbits.TRISB0
-#define MODE_SELECT PORTBbits.RB0
-#define MODE_SEND 1
+#define EEPROM_CS_TRIS    TRISBbits.TRISB3
+#define EEPROM_CS         PORTBbits.RB3
 
-#define DIP_3_TRIS TRISBbits.TRISB1
-#define DIP_3 PORTBbits.RB1
+#define LED_ON            0
+#define LED_OFF           1
+
+
+#define STRIP_TRIS TRISCbits.TRISC0
+#define STRIP PORTCbits.RC2
 
 unsigned char tx_buf[MAX_PAYLOAD];
 unsigned char rx_buf[MAX_PAYLOAD];
@@ -40,16 +45,16 @@ void delay(void);
 ////                            System Code                                 ////
 void main(void);
 void interrupt interrupt_high(void);
+void updateLEDs();
 
 void setup(void) {
     //Misc config
-    STRIP_DATA_TRIS = OUTPUT;
-    STATUS_TRIS = OUTPUT;
-    MODE_SELECT_TRIS = INPUT;
-    STATUS_LED = 0;
-    LED_GREEN_TRIS = OUTPUT;
     LED_RED_TRIS = OUTPUT;
-    DIP_3_TRIS = INPUT;
+    LED_GREEN_TRIS = OUTPUT;
+    LED_YELLOW_TRIS = OUTPUT;
+    EEPROM_CS_TRIS = OUTPUT;
+    STRIP_TRIS = OUTPUT;
+
 
     //Enable internal pullup resistor for port B
     INTCON2bits.RBPU = CLEAR;
@@ -108,6 +113,8 @@ void setup(void) {
     
     //9.6kbaud = 000, 103
     RCSTA1bits.CREN = SET;
+
+    EEPROM_CS = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,6 +145,8 @@ void run(void) {
     nrf_rxmode();
     delay();
 
+    LED_YELLOW = LED_ON;
+
     //nrf_setTxAddr(0);
     //nrf_setRxAddr(0,0);
 
@@ -151,7 +160,7 @@ void run(void) {
         sendIntDec(nrf_getStatus());
         sendLiteralBytes("\n");
 
-        LED_GREEN = nrf_receive(&tx_buf,&rx_buf);
+        LED_GREEN = !nrf_receive(&tx_buf,&rx_buf);
         delay();
     }
 }
@@ -173,7 +182,7 @@ void runSend(void) {
     tx_buf[0] = 42;
     while(1) {
         LED_RED++;
-        LED_GREEN = nrf_send(&tx_buf,&rx_buf);
+        LED_GREEN = !nrf_send(&tx_buf,&rx_buf);
         sendIntDec(nrf_getStatus());
         sendLiteralBytes("\n");
         delay();
@@ -204,11 +213,7 @@ void delay(void) {
 void main(void) {
     setup();
 
-    if (MODE_SELECT == MODE_SEND) {
-        runSend();
-    } else {
-        run();
-    }
+    runSend();
 
     while(1);
 }
@@ -217,4 +222,8 @@ void interrupt interrupt_high(void) {
     interruptService();
 
     INTCONbits.TMR0IF = CLEAR;
+}
+
+void updateLEDs() {
+
 }

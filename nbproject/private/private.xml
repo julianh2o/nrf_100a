@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?><project-private xmlns="http://www.netbeans.org/ns/project-private/1">
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/1">
+<<<<<<< HEAD
         <file>file:/home/julian/Hobby/Development/tinkering/nrf_100a/serialrelay.c</file>
         <file>file:/home/julian/Hobby/Development/tinkering/nrf_100a/nRF2401.c</file>
         <file>file:/home/julian/Hobby/Development/tinkering/nrf_100a/nRF2401.h</file>
+=======
+        <file>file:/home/julian/Hobby/Development/tinkering/led_100a/serialrelay.c</file>
+        <file>file:/home/julian/Hobby/Development/tinkering/led_100a/nRF2401_config.h</file>
+>>>>>>> e7a79441d60c17de7f20a47edc18c855940bd5fd
     </open-files>
 </project-private>

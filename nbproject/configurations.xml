@@ -8,6 +8,7 @@
       <itemPath>config.h</itemPath>
       <itemPath>nRF2401.h</itemPath>
       <itemPath>serlcd.h</itemPath>
+      <itemPath>nRF2401_config.h</itemPath>
     </logicalFolder>
     <logicalFolder name="f1" displayName="Linker Files" projectFiles="true">
     </logicalFolder>
